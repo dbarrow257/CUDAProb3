@@ -1,0 +1,7 @@
+*.o
+*.a
+*.so
+*.root
+example/maingpu
+example/maincpu
+Exec
