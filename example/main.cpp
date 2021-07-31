@@ -71,8 +71,8 @@ std::vector<T> logspace(T Emin,T Emax,unsigned int div){
 
 int main(int argc, char** argv){
 
-    using FLOAT_T = double;
-    //using FLOAT_T = float;
+  //using FLOAT_T = double;
+  using FLOAT_T = float;
 
     TIMERSTARTCPU(total_runtime_with_output)
 

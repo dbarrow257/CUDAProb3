@@ -8,7 +8,7 @@ ARCH=	-gencode arch=compute_50,code=sm_50 \
 
 # Had to modify ptx assembler option
 all:
-	nvcc -g -O2 -x cu $(ARCH) -lineinfo -std=c++14 -Xcompiler="-fopenmp -Wall" -I.. main.cpp -o maingpu
+	nvcc -g -O2 -x cu $(ARCH) -lineinfo -std=c++11 -Xcompiler="-fopenmp -Wall" -I.. main.cpp -o maingpu
 
 cpu:
 	g++ -g -O2 -std=c++14 -fopenmp -Wall -I.. main.cpp -o maincpu
