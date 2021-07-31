@@ -61,16 +61,16 @@ int main(int argc, char** argv){
   std::vector<FLOAT_T> CosineList;
   std::vector<FLOAT_T> EnergyList;
 
-  std::cout << "Energy:" << std::endl;
+  std::cout << "Energy Values:" << std::endl;
   for (int xBin=1;xBin<=TemplateHist->GetNbinsX();xBin++) {
     EnergyList.push_back(TemplateHist->GetXaxis()->GetBinCenter(xBin));
-    std::cout << xBin-1 << " " << EnergyList[xBin-1] << std::endl;
+    std::cout << "Index:" << std::setw(10) << xBin-1 << " | Val:" << std::setw(10) << EnergyList[xBin-1] << std::endl;
   }
 
-  std::cout << "Cosine:" << std::endl;
+  std::cout << "Cosine Values:" << std::endl;
   for (int yBin=1;yBin<=TemplateHist->GetNbinsY();yBin++) {
     CosineList.push_back(TemplateHist->GetYaxis()->GetBinCenter(yBin));
-    std::cout << yBin-1 << " " << CosineList[yBin-1] << std::endl;
+    std::cout << "Index:" << std::setw(10) << yBin-1 << " | Val:" << std::setw(10) << CosineList[yBin-1] << std::endl;
   }
 
   int nCosine = (int)CosineList.size();
