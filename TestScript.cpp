@@ -114,8 +114,9 @@ int main(int argc, char** argv){
   
   for (int iNeutrinoTypes=0;iNeutrinoTypes<nNeutrinoTypes;iNeutrinoTypes++) {
 
-    if (iNeutrinoTypes==1) {
-      // set mixing matrix. angles in radians
+    if (NeutrinoTypes[iNeutrinoTypes]==Antineutrino) {
+      // DB, Haven't really thought about it, but prob3++ sets dcp->-dcp here: https://github.com/rogerwendell/Prob3plusplus/blob/fd189e232e96e2c5ebb2f7bd3a5406b288228e41/BargerPropagator.cc#L235
+      // Copying that behaviour gives same behaviour as prob3++/probGPU
       propagator->setMNSMatrix(theta12, theta13, theta23, -dcp);
     }
     propagator->calculateProbabilities(NeutrinoTypes[iNeutrinoTypes]);
