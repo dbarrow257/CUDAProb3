@@ -71,8 +71,8 @@ std::vector<T> logspace(T Emin,T Emax,unsigned int div){
 
 int main(int argc, char** argv){
 
-  using FLOAT_T = double;
-  //using FLOAT_T = float;
+  //using FLOAT_T = double;
+  using FLOAT_T = float;
 
     TIMERSTARTCPU(total_runtime_with_output)
 
@@ -100,11 +100,11 @@ int main(int argc, char** argv){
 	const FLOAT_T dm12sq = 7.9e-5;
 	const FLOAT_T dm23sq = 2.5e-3;
 	
-    std::unique_ptr<Propagator<FLOAT_T>> propagator( new CpuPropagator<FLOAT_T>(n_cosines, n_energies, n_threads)); // cpu propagator with 4 threads
+	//std::unique_ptr<Propagator<FLOAT_T>> propagator( new CpuPropagator<FLOAT_T>(n_cosines, n_energies, n_threads)); // cpu propagator with 4 threads
 
     // these 3 are only available if compiled with nvcc.
 
-	//std::unique_ptr<Propagator<FLOAT_T>> propagator( new CudaPropagatorSingle<FLOAT_T>(0, n_cosines, n_energies)); // Single GPU propagator using GPU 0
+	std::unique_ptr<Propagator<FLOAT_T>> propagator( new CudaPropagatorSingle<FLOAT_T>(0, n_cosines, n_energies)); // Single GPU propagator using GPU 0
     //std::unique_ptr<Propagator<FLOAT_T>> propagator( new CudaPropagator<FLOAT_T>(std::vector<int>{0}, n_cosines, n_energies)); // Multi GPU propagator which only uses GPU 0. Behaves identical to propagator above.
     //std::unique_ptr<Propagator<FLOAT_T>> propagator( new CudaPropagator<FLOAT_T>(std::vector<int>{0, 1}, n_cosines, n_energies)); // Multi GPU propagator which uses GPU 0 and GPU 1
 
