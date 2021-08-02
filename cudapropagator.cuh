@@ -180,6 +180,33 @@ namespace cudaprob3{
             return resultList.get()[index + offset];
         }
 
+        // get oscillation weight for specific cosine and energy
+        void getProbabilityArr(FLOAT_T* probArr, ProbType t) {
+            int index_cosine = 0;
+            int index_energy = 0;
+
+            if(index_cosine >= this->n_cosines || index_energy >= this->n_energies)
+	    		    throw std::runtime_error("CudaPropagatorSingle::getProbability. Invalid indices");
+
+            if(!resultsResideOnHost){
+		getResultFromDevice();
+                resultsResideOnHost = true;
+            }
+
+	    FLOAT_T* resultList_Arr = resultList.get();
+            const std::uint64_t offset = std::uint64_t(t) * std::uint64_t(this->n_energies) * std::uint64_t(this->n_cosines);
+
+	    std::uint64_t iter = 0;
+	    for (std::uint64_t index_cosine=0;index_cosine<this->n_cosines;index_cosine++) {
+	    	for (std::uint64_t index_energy=0;index_energy<this->n_energies;index_energy++) {
+            	    std::uint64_t index = std::uint64_t(index_cosine) * std::uint64_t(this->n_energies) + std::uint64_t(index_energy);
+		    probArr[iter] = resultList_Arr[index + offset];
+		    iter += 1;
+		}
+	     }
+
+        }
+
     protected:
         void setMaxlayers() override{
             Propagator<FLOAT_T>::setMaxlayers();
@@ -418,6 +445,10 @@ namespace cudaprob3{
                 const int localCosineIndex = localCosineIndices[index_cosine];
 
                 return propagatorVector[deviceIndex]->getProbability(localCosineIndex, index_energy, t);
+        }
+
+        void getProbabilityArr(FLOAT_T* probArr, ProbType t) {
+	     	throw std::runtime_error("CudaPropagatorSingle::getProbabilityArr. Will not work!");
         }
 
     private:

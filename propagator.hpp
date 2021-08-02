@@ -295,6 +295,11 @@ namespace cudaprob3{
         /// @param t Specify which probability P(i->j)
         virtual FLOAT_T getProbability(int index_cosine, int index_energy, ProbType t) = 0;
 
+        /// \brief get oscillation weight
+        /// @param probArr Cosine bin index (zero based)
+        /// @param t Specify which probability P(i->j)
+        virtual void getProbabilityArr(FLOAT_T* probArr, ProbType t) = 0;
+
     protected:
         // for each cosine bin, determine the number of layers which will be crossed by the neutrino path
         // the atmospheric layers is excluded

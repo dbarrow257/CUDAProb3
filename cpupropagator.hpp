@@ -95,13 +95,27 @@ namespace cudaprob3{
         }
 
         FLOAT_T getProbability(int index_cosine, int index_energy, ProbType t) override{
-            if(index_cosine >= this->n_cosines || index_energy >= this->n_energies)
-                throw std::runtime_error("CpuPropagator::getProbability. Invalid indices");
+	  if(index_cosine >= this->n_cosines || index_energy >= this->n_energies) {
+	    throw std::runtime_error("CpuPropagator::getProbability. Invalid indices");
+	  }
 
             std::uint64_t index = std::uint64_t(index_cosine) * std::uint64_t(this->n_energies) * std::uint64_t(9)
                     + std::uint64_t(index_energy) * std::uint64_t(9);
             return resultList[index + int(t)];
         }
+
+      void getProbabilityArr(FLOAT_T* probArr, ProbType t) override{
+
+	std::uint64_t iter = 0;
+	for (std::uint64_t index_cosine=0;index_cosine<this->n_cosines;index_cosine++) {
+	  for (std::uint64_t index_energy=0;index_energy<this->n_energies;index_energy++) {
+	    std::uint64_t index = std::uint64_t(index_cosine) * std::uint64_t(this->n_energies) * std::uint64_t(9);
+	    probArr[iter] = resultList[index + int(t)];
+	    iter += 1;
+	  }
+	}
+
+      }
 
     private:
         std::vector<FLOAT_T> resultList;
