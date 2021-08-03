@@ -65,6 +65,8 @@ namespace cudaprob3{
             *this = std::move(other);
         }
 
+        virtual ~Propagator(){}
+
         /// \brief Copy assignment operator
         /// @param other
         Propagator& operator=(const Propagator& other){
