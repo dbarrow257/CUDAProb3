@@ -197,8 +197,8 @@ namespace cudaprob3{
             const std::uint64_t offset = std::uint64_t(t) * std::uint64_t(this->n_energies) * std::uint64_t(this->n_cosines);
 
 	    std::uint64_t iter = 0;
-	    for (std::uint64_t index_cosine=0;index_cosine<this->n_cosines;index_cosine++) {
-	    	for (std::uint64_t index_energy=0;index_energy<this->n_energies;index_energy++) {
+	    for (std::uint64_t index_energy=0;index_energy<this->n_energies;index_energy++) {
+	    	for (std::uint64_t index_cosine=0;index_cosine<this->n_cosines;index_cosine++) {
             	    std::uint64_t index = std::uint64_t(index_cosine) * std::uint64_t(this->n_energies) + std::uint64_t(index_energy);
 		    probArr[iter] = resultList_Arr[index + offset];
 		    iter += 1;
