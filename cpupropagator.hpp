@@ -104,22 +104,7 @@ namespace cudaprob3{
             return resultList[index + int(t)];
         }
 
-      //void getProbabilityArr(FLOAT_T* probArr, int ArrayLength, ProbType t) override{
       void getProbabilityArr(FLOAT_T* probArr, ProbType t) override{
-	/*
-	if (ArrayLength != this->n_cosines*this->n_energies) {
-	  throw std::runtime_error("CpuPropagator::getProbabilityArr. Invalid ArrayLength");
-	}
-	
-	for (std::uint64_t iter=0;iter<ArrayLength;iter++) {
-	  std::uint64_t yBin = std::uint64_t(iter%nSecondaryBinsY);
-	  std::uint64_t xBin = std::uint64_t(iter/nSecondaryBinsY);
-
-	  std::uint64_t index = std::uint64_t(yBin) * std::uint64_t(this->n_energies) * std::uint64_t(9)
-	    + std::uint64_t(index_energy) * std::uint64_t(9)
-	  probArr[iter] = 
-	}
-	*/
 
 	std::uint64_t iter = 0;
 	for (std::uint64_t index_energy=0;index_energy<this->n_energies;index_energy++) {
