@@ -75,6 +75,7 @@ namespace cudaprob3{
             maxlayers = other.maxlayers;
             radii = other.radii;
             rhos = other.rhos;
+            yps = other.yps;
             coslimit = other.coslimit;
             Mix_U = other.Mix_U;
             dm = other.dm;
@@ -95,6 +96,7 @@ namespace cudaprob3{
             maxlayers = std::move(other.maxlayers);
             radii = std::move(other.radii);
             rhos = std::move(other.rhos);
+            yps = std::move(other.yps);
             coslimit = std::move(other.coslimit);
             Mix_U = std::move(other.Mix_U);
             dm = std::move(other.dm);
@@ -116,13 +118,18 @@ namespace cudaprob3{
         /// and radii_[j], inclusive, i < j  is assumed to be rhos_[j]
         /// @param radii_ List of radii
         /// @param rhos_ List of densities
-        virtual void setDensity(const std::vector<FLOAT_T>& radii_, const std::vector<FLOAT_T>& rhos_){
+        /// @param yps_ List of chemical compositions
+      virtual void setDensity(const std::vector<FLOAT_T>& radii_, const std::vector<FLOAT_T>& rhos_, const std::vector<FLOAT_T>& yps_){
 
             if(rhos_.size() != radii_.size()){
                 throw std::runtime_error("setDensity : rhos.size() != radii.size()");
             }
 
-            if(rhos_.size() == 0 || radii_.size() == 0){
+            if(rhos_.size() != yps_.size()){
+                throw std::runtime_error("setDensity : rhos.size() != yps.size()");
+            }	    
+
+            if(rhos_.size() == 0 || radii_.size() == 0 || yps_.size() == 0){
                 throw std::runtime_error("setDensity : vectors must not be empty");
             }
 
@@ -142,10 +149,12 @@ namespace cudaprob3{
 
             radii = radii_;
             rhos = rhos_;
+	    yps = yps_;
 
             if(needFlip){
                 std::reverse(radii.begin(), radii.end());
                 std::reverse(rhos.begin(), rhos.end());
+                std::reverse(yps.begin(), yps.end());
             }
 
             coslimit.clear();
@@ -175,14 +184,17 @@ namespace cudaprob3{
 
             std::vector<FLOAT_T> radii;
             std::vector<FLOAT_T> rhos;
+            std::vector<FLOAT_T> yps;
             FLOAT_T r;
             FLOAT_T d;
-            while (file >> r >> d){
+	    FLOAT_T yp;
+            while (file >> r >> d >> yp){
                 radii.push_back(r);
                 rhos.push_back(d);
+		yps.push_back(yp);
             }
 
-            setDensity(radii, rhos);
+            setDensity(radii, rhos, yps);
         }
 
         /// \brief Set mixing angles and cp phase in radians
@@ -328,6 +340,7 @@ namespace cudaprob3{
 
         std::vector<FLOAT_T> radii;
         std::vector<FLOAT_T> rhos;
+        std::vector<FLOAT_T> yps;
         std::vector<FLOAT_T> coslimit;
 
         std::array<cudaprob3::math::ComplexNumber<FLOAT_T>, 9> Mix_U; // MNS mixing matrix
