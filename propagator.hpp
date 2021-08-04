@@ -299,6 +299,11 @@ namespace cudaprob3{
             isSetProductionHeight = true;
         }
 
+      /// \brief Set chemical composition of each layer in the Earth model
+      /// \details Set chemical composition of each layer in the Earth model
+      /// @param 
+      virtual void setChemicalComposition(const std::vector<FLOAT_T>& list) = 0;
+
         /// \brief Calculate the probability of each cell
         /// @param type Neutrino or Antineutrino
         virtual void calculateProbabilities(NeutrinoType type) = 0;

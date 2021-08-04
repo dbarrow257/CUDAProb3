@@ -167,6 +167,17 @@ namespace cudaprob3{
             waitForCompletion();
         }
 
+        void setChemicalComposition(const std::vector<FLOAT_T>& list) override{
+          if (list.size() != this->yps.size()) {
+            throw std::runtime_error("CpuPropagator::setChemicalComposition. Size of input list not equal to expectation.");
+          }
+
+	  for (int iyp=0;iyp<list.size();iyp++) {
+            this->yps[iyp] = list[iyp];
+	  }
+
+        }
+
         // get oscillation weight for specific cosine and energy
         FLOAT_T getProbability(int index_cosine, int index_energy, ProbType t) override{
             if(index_cosine >= this->n_cosines || index_energy >= this->n_energies)
