@@ -176,6 +176,10 @@ namespace cudaprob3{
             this->yps[iyp] = list[iyp];
 	  }
 
+	  int nDensityLayers = this->radii.size();
+
+	  cudaMemcpy(d_yps.get(), this->yps.data(), sizeof(FLOAT_T) * nDensityLayers, H2D); CUERR;
+
         }
 
         // get oscillation weight for specific cosine and energy
