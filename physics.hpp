@@ -118,11 +118,10 @@ namespace cudaprob3{
                 __constant__ int mass_order_device[3];
             #endif
 
-            double mix_data [9 * sizeof(math::ComplexNumber<double>)] ;
-            double mass_data[9];
-            double A_X_factor[81 * 4]; //precomputed factors for faster calculation
-            int mass_order[3];
-
+            static double mix_data [9 * sizeof(math::ComplexNumber<double>)] ;
+            static double mass_data[9];
+            static double A_X_factor[81 * 4]; //precomputed factors for faster calculation
+            static int mass_order[3];
 
             /*
              * Set global 3x3 pmns mixing matrix
