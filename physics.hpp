@@ -23,8 +23,8 @@ along with CUDAProb3++.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <string.h>
 #include <stdio.h>
-//#include <math.h>
-//#include <algorithm>
+#include <math.h>
+#include <algorithm>
 #include <assert.h>
 #include <omp.h>
 
@@ -89,17 +89,17 @@ along with CUDAProb3++.  If not, see <http://www.gnu.org/licenses/>.
 // in device code, we need to access the device global constants instead of host global constants
 #ifdef __CUDA_ARCH__
 
-    #define U(i,j) ((math::ComplexNumber<FLOAT_T>*)mix_data_device)[( i * 3 + j)]
-    #define DM(i,j) ((FLOAT_T*)mass_data_device)[( i * 3 + j)]
-    #define AXFAC(a,b,c,d,e) ((FLOAT_T*)A_X_factor_device)[a * 3 * 3 * 3 * 4 + b * 3 * 3 * 4 + c * 3 * 4 + d * 4 + e]
-    #define ORDER(i) mass_order_device[i]
+#define U(i,j) ((math::ComplexNumber<FLOAT_T>*)cudaprob3::physics::mix_data_device)[( i * 3 + j)]
+#define DM(i,j) ((FLOAT_T*)cudaprob3::physics::mass_data_device)[( i * 3 + j)]
+#define AXFAC(a,b,c,d,e) ((FLOAT_T*)cudaprob3::physics::A_X_factor_device)[a * 3 * 3 * 3 * 4 + b * 3 * 3 * 4 + c * 3 * 4 + d * 4 + e]
+#define ORDER(i) cudaprob3::physics::mass_order_device[i]
 
 #else
 
-    #define U(i,j) ((math::ComplexNumber<FLOAT_T>*)mix_data)[( i * 3 + j)]
-    #define DM(i,j) ((FLOAT_T*)mass_data)[( i * 3 + j)]
-    #define AXFAC(a,b,c,d,e) ((FLOAT_T*)A_X_factor)[a * 3 * 3 * 3 * 4 + b * 3 * 3 * 4 + c * 3 * 4 + d * 4 + e]
-    #define ORDER(i) mass_order[i]
+#define U(i,j) ((math::ComplexNumber<FLOAT_T>*)cudaprob3::physics::mix_data)[( i * 3 + j)]
+#define DM(i,j) ((FLOAT_T*)cudaprob3::physics::mass_data)[( i * 3 + j)]
+#define AXFAC(a,b,c,d,e) ((FLOAT_T*)cudaprob3::physics::A_X_factor)[a * 3 * 3 * 3 * 4 + b * 3 * 3 * 4 + c * 3 * 4 + d * 4 + e]
+#define ORDER(i) cudaprob3::physics::mass_order[i]
 #endif
 
 
