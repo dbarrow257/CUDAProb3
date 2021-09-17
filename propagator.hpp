@@ -31,8 +31,6 @@ along with CUDAProb3++.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <cmath>
 
-
-
 namespace cudaprob3{
 
 
@@ -85,6 +83,10 @@ namespace cudaprob3{
             isSetProductionHeight = other.isSetProductionHeight;
             isInit = other.isInit;
 
+	    productionHeightList_prob = other.productionHeightList_prob;
+	    productionHeightList_bins = other.productionHeightList_bins;
+	    isSetProductionHeightArray = other.isSetProductionHeightArray;
+
             return *this;
         }
 
@@ -105,6 +107,10 @@ namespace cudaprob3{
             isSetCosine = other.isSetCosine;
             isSetProductionHeight = other.isSetProductionHeight;
             isInit = other.isInit;
+
+            productionHeightList_prob = other.productionHeightList_prob;
+            productionHeightList_bins = other.productionHeightList_bins;
+            isSetProductionHeightArray = other.isSetProductionHeightArray;
 
             other.isInit = false;
 
@@ -299,10 +305,33 @@ namespace cudaprob3{
             isSetProductionHeight = true;
         }
 
-      /// \brief Set chemical composition of each layer in the Earth model
-      /// \details Set chemical composition of each layer in the Earth model
-      /// @param 
-      virtual void setChemicalComposition(const std::vector<FLOAT_T>& list) = 0;
+      virtual void setProductionHeightList(const std::vector<FLOAT_T>& list_prob, const std::vector<FLOAT_T>& list_bins) {
+	
+	if (list_prob.size() != NPRODHEIGHTBINS*2*3*n_energies*n_cosines) {
+	  throw std::runtime_error("Propagator::setProductionHeightList. Prob array is not the expected size");
+	}
+
+	if (list_bins.size()-1 != NPRODHEIGHTBINS) {
+	  throw std::runtime_error("Propagator::setProductionHeightList. ProductionHeightBins array is not expected size");
+	}
+
+	productionHeightList_prob = std::vector<FLOAT_T>(list_prob.size());
+	for (unsigned int i=0;i<list_prob.size();i++) {
+	  productionHeightList_prob[i] = list_prob[i];
+	}
+
+	productionHeightList_bins = std::vector<FLOAT_T>(list_bins.size());
+	for (unsigned int i=0;i<list_bins.size();i++) {
+	  productionHeightList_bins[i] = list_bins[i];
+	}
+	
+	isSetProductionHeightArray = true;
+      }
+
+        /// \brief Set chemical composition of each layer in the Earth model
+        /// \details Set chemical composition of each layer in the Earth model
+        /// @param 
+        virtual void setChemicalComposition(const std::vector<FLOAT_T>& list) = 0;
 
         /// \brief Calculate the probability of each cell
         /// @param type Neutrino or Antineutrino
@@ -343,6 +372,9 @@ namespace cudaprob3{
         std::vector<int> maxlayers;
         //std::vector<FLOAT_T> pathLengths;
 
+        std::vector<FLOAT_T> productionHeightList_prob;
+        std::vector<FLOAT_T> productionHeightList_bins;
+
         std::vector<FLOAT_T> radii;
         std::vector<FLOAT_T> rhos;
         std::vector<FLOAT_T> yps;
@@ -353,12 +385,14 @@ namespace cudaprob3{
 
         FLOAT_T ProductionHeightinCentimeter;
 
+        bool isSetProductionHeightArray = false;
         bool isSetProductionHeight = false;
         bool isSetCosine = false;
         bool isInit = true;
 
         int n_cosines;
         int n_energies;
+
     };
 
 

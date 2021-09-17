@@ -30,7 +30,6 @@ along with CUDAProb3++.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include <vector>
 
-
 namespace cudaprob3{
 
     /// \class CudaPropagatorSingle
@@ -75,6 +74,8 @@ namespace cudaprob3{
             //allocate GPU arrays
             d_energy_list = make_unique_dev<FLOAT_T>(deviceId, n_energies_); CUERR;
             d_cosine_list = make_unique_dev<FLOAT_T>(deviceId, n_cosines_); CUERR;
+            d_productionHeight_prob_list = make_unique_dev<FLOAT_T>(deviceId, NPRODHEIGHTBINS*2*3*n_energies_*n_cosines_); CUERR;
+            d_productionHeight_bins_list = make_unique_dev<FLOAT_T>(deviceId, NPRODHEIGHTBINS+1); CUERR;
             d_result_list = make_shared_dev<FLOAT_T>(deviceId, std::uint64_t(n_cosines_) * std::uint64_t(n_energies_) * std::uint64_t(9)); CUERR;
             d_maxlayers = make_unique_dev<int>(deviceId, this->n_cosines);
         }
@@ -118,6 +119,8 @@ namespace cudaprob3{
             d_maxlayers = std::move(other.d_maxlayers);
             d_energy_list = std::move(other.d_energy_list);
             d_cosine_list = std::move(other.d_cosine_list);
+            d_productionHeight_prob_list = std::move(other.d_productionHeight_prob_list);
+            d_productionHeight_bins_list = std::move(other.d_productionHeight_bins_list);
             d_result_list = std::move(other.d_result_list);
 
             deviceId = other.deviceId;
@@ -161,6 +164,13 @@ namespace cudaprob3{
             cudaMemcpy(d_cosine_list.get(), this->cosineList.data(), sizeof(FLOAT_T) * this->n_cosines, H2D); CUERR;
         }
 
+	void setProductionHeightList(const std::vector<FLOAT_T>& list_prob, const std::vector<FLOAT_T>& list_bins) override{
+	    Propagator<FLOAT_T>::setProductionHeightList(list_prob, list_bins); //set host production height list
+
+	    cudaMemcpy(d_productionHeight_prob_list.get(), this->productionHeightList_prob.data(), sizeof(FLOAT_T)*NPRODHEIGHTBINS*2*3*this->n_energies*this->n_cosines, H2D); CUERR;
+	    cudaMemcpy(d_productionHeight_bins_list.get(), this->productionHeightList_bins.data(), sizeof(FLOAT_T)*NPRODHEIGHTBINS+1, H2D); CUERR;
+	}
+
         // calculate the probability of each cell
         void calculateProbabilities(NeutrinoType type) override{
             calculateProbabilitiesAsync(type);
@@ -169,7 +179,7 @@ namespace cudaprob3{
 
         void setChemicalComposition(const std::vector<FLOAT_T>& list) override{
           if (list.size() != this->yps.size()) {
-            throw std::runtime_error("CpuPropagator::setChemicalComposition. Size of input list not equal to expectation.");
+            throw std::runtime_error("CudaPropagator::setChemicalComposition. Size of input list not equal to expectation.");
           }
 
 	  for (int iyp=0;iyp<list.size();iyp++) {
@@ -257,9 +267,11 @@ namespace cudaprob3{
                             type,
                             d_cosine_list.get(), this->n_cosines,
                             d_energy_list.get(), this->n_energies,
+			    d_productionHeight_prob_list.get(),
+			    d_productionHeight_bins_list.get(),
                             d_radii.get(), d_rhos.get(), d_yps.get(),
                             d_maxlayers.get(),
-                            this->ProductionHeightinCentimeter, d_result_list.get());
+                            d_result_list.get());
 
             CUERR;
         }
@@ -288,6 +300,8 @@ namespace cudaprob3{
         unique_dev_ptr<int> d_maxlayers;
         unique_dev_ptr<FLOAT_T> d_energy_list;
         unique_dev_ptr<FLOAT_T> d_cosine_list;
+        unique_dev_ptr<FLOAT_T> d_productionHeight_prob_list;
+        unique_dev_ptr<FLOAT_T> d_productionHeight_bins_list;
         shared_dev_ptr<FLOAT_T> d_result_list;
 
         cudaStream_t stream;

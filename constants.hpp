@@ -20,6 +20,8 @@ along with CUDAProb3++.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "hpc_helpers.cuh"
 
+#define NPRODHEIGHTBINS 20
+
 namespace cudaprob3{
 
     template<typename FLOAT_T>
