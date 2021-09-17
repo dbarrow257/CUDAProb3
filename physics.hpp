@@ -27,7 +27,7 @@ along with CUDAProb3++.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include <assert.h>
 #include <omp.h>
-
+#include <complex.h>
 
 /*
  * This file contains the Barger et al physics which are used by Prob3++ to compute oscillation probabilities.
@@ -437,6 +437,7 @@ namespace cudaprob3{
 
                 math::ComplexNumber<FLOAT_T> X[3][3];
                 math::ComplexNumber<FLOAT_T> product[3][3][3];
+
                 /* (1/2)*(1/(h_bar*c)) in units of GeV/(eV^2-km) */
                 const FLOAT_T LoEfac = 2.534;
 
@@ -515,6 +516,25 @@ namespace cudaprob3{
                 }
             }
 
+	  
+	  //##########################################################
+	  /*
+	   *   Obtain transition matrix expanded as A = sum_k C_k exp(i arg_k).
+	   *   Cout_{re,im} have indices [row][col][k] where k is this expansion index.
+	   *   Cout only depends on nutypei, Enuf and rhof, but not on Lenf.
+	   *   Similarly argout has index [k].
+	   */
+	  template<typename FLOAT_T>
+	  HOSTDEVICEQUALIFIER
+	  void get_transition_matrix_expansion(const NeutrinoType nutype,FLOAT_T Enu,FLOAT_T rho,FLOAT_T Len,FLOAT_T Cout_re[3][3][3],FLOAT_T Cout_im[3][3][3],FLOAT_T argout[3],FLOAT_T phase_offset)
+	  {
+	    FLOAT_T d_dmMatVac[3][3], d_dmMatMat[3][3];
+	    getMfast(Enu, rho, nutype, d_dmMatMat, d_dmMatVac);
+
+	    getArg(Len, Enu, d_dmMatVac, argout, phase_offset);
+	    getC(Enu, rho, d_dmMatVac, d_dmMatMat, nutype, Cout_re, Cout_im, phase_offset);
+	  }
+
             /*
              * Get 3x3 transition amplitude Aout for neutrino with energy E travelling Len kilometers through matter of constant density rho
              */
@@ -578,140 +598,320 @@ namespace cudaprob3{
                 }
             }
 
+          template<typename FLOAT_T>
+          HOSTDEVICEQUALIFIER
+	  void Testing(FLOAT_T PathLengths[NPRODHEIGHTBINS], FLOAT_T sinarg[], FLOAT_T cosarg[], FLOAT_T darg0_dProductionHeight[3], FLOAT_T C_re[][3][3], FLOAT_T C_im[][3][3], int ieig_atm[], FLOAT_T Prob[3][3]){
+	    memset(Prob,0,sizeof(FLOAT_T)*3*3);
 
-            template<typename FLOAT_T>
-            HOSTDEVICEQUALIFIER
-            void calculate(NeutrinoType type,
-			   const FLOAT_T* const cosinelist,
-			   int n_cosines,
-			   const FLOAT_T* const energylist,
-			   int n_energies,
-			   const FLOAT_T* const productionHeight_prob_list, // 20 (nBins) * 2 (nu,nubar) * 3 (e,mu,tau) * n_energies * n_cosines
-			   const FLOAT_T* const productionHeight_bins_list, // 21 (BinEdges) in cm
-			   const FLOAT_T* const radii,
-			   const FLOAT_T* const rhos,
-			   const FLOAT_T* const yps,
-			   const int* const maxlayers,
-			   FLOAT_T* const result){
+	    std::complex<FLOAT_T> totalLenShiftFactor[3][3][3];
 
-            //prepare more constant data. For the kernel, this is done by the wrapper function callCalculateKernelAsync
-            #ifndef __CUDA_ARCH__
-                prepare_getMfast<FLOAT_T>(type);
-            #endif
-
-            #ifdef __CUDA_ARCH__
-                // on the device, we use the global thread Id to index the data
-                const int max_energies_per_path = SDIV(n_energies, blockDim.x) * blockDim.x;
-                for(unsigned index = blockIdx.x * blockDim.x + threadIdx.x; index < n_cosines * max_energies_per_path; index += blockDim.x * gridDim.x){
-                    const unsigned index_energy = index % max_energies_per_path;
-                    const unsigned index_cosine = index / max_energies_per_path;
-            #else
-                // on the host, we use OpenMP to parallelize looping over cosines
-                #pragma omp parallel for schedule(dynamic)
-                for(int index_cosine = 0; index_cosine < n_cosines; index_cosine += 1){
-            #endif
-
-                    const FLOAT_T cosine_zenith = cosinelist[index_cosine];
-
-                    const FLOAT_T TotalEarthLength =  -2.0*cosine_zenith*Constants<FLOAT_T>::REarthcm(); // in [cm]
-                    const int MaxLayer = maxlayers[index_cosine];
-
-                    math::ComplexNumber<FLOAT_T> TransitionMatrix[3][3];
-                    math::ComplexNumber<FLOAT_T> TransitionMatrixCoreToMantle[3][3];
-                    math::ComplexNumber<FLOAT_T> finalTransitionMatrix[3][3];
-                    math::ComplexNumber<FLOAT_T> TransitionTemp[3][3];
-
-                #ifndef __CUDA_ARCH__
-                    for(int index_energy = 0; index_energy < n_energies; index_energy += 1){
-                #else
-                    if(index_energy < n_energies){
-                #endif
-		  
-		  const FLOAT_T energy = energylist[index_energy];
-		  
-		  const FLOAT_T ProductionHeightinCentimeter = 25000000.0;
-
-		  FLOAT_T PathLengths[NPRODHEIGHTBINS];
-		  for (int ih=0;ih<NPRODHEIGHTBINS;ih++) {
-		  FLOAT_T ProdHeight = (productionHeight_bins_list[ih]+productionHeight_bins_list[ih+1])/2.0;
-		  PathLengths[ih] = sqrt((Constants<FLOAT_T>::REarthcm() + ProdHeight )*(Constants<FLOAT_T>::REarthcm() + ProdHeight)
-		                       - (Constants<FLOAT_T>::REarthcm()*Constants<FLOAT_T>::REarthcm())*( 1 - cosine_zenith*cosine_zenith)) - Constants<FLOAT_T>::REarthcm()*cosine_zenith;
+	    /*
+	    for (int i=0;i<3;i++) {
+	      for (int j=0;j<3;j++) {
+		for (int f=0;f<3;f++) {
+		  totalLenShiftFactor = (i==j);
+		}
+	      }
+	    }
+	    for (int ih=0;ih<(NPRODHEIGHTBINS-1);ih++) {
+	      FLOAT_T h0 = PathLengths[ih];
+	      FLOAT_T h1 = PathLengths[ih+1];
+	      FLOAT_T hm = (h0+h1)/2.;
+	      FLOAT_T hw = (h1-h0);
+	      
+	      for (int i=0;i<3;i++) {
+		for (int j=0;j<3;j++) {
+		  FLOAT_T darg_dh = darg0_dProductionHeight[i]-darg0_dProductionHeight[j];
+		  std::complex<FLOAT_T> f = exp(std::complex<FLOAT_T>(0,darg_dh*hm) * sin(0.5*darg_dh*hw)/(0.5*darg_dh*hw));
+		  for (int flav=0;flav<3;flav++) {
+		    totalLenShiftFactor[i][j][flav] = f + conj(f);
 		  }
-		  
-		  const FLOAT_T PathLength = sqrt((Constants<FLOAT_T>::REarthcm() + ProductionHeightinCentimeter )*(Constants<FLOAT_T>::REarthcm() + ProductionHeightinCentimeter)
-                                                - (Constants<FLOAT_T>::REarthcm()*Constants<FLOAT_T>::REarthcm())*( 1 - cosine_zenith*cosine_zenith)) - Constants<FLOAT_T>::REarthcm()*cosine_zenith;
-
-                        // set TransitionMatrixCoreToMantle to unit matrix
-                        UNROLLQUALIFIER
-                        for(int i = 0; i < 3; i++){
-                            UNROLLQUALIFIER
-                            for(int j = 0; j < 3; j++){
-                                    TransitionMatrixCoreToMantle[i][j].re = (i == j ? 1.0 : 0.0);
-                                    TransitionMatrixCoreToMantle[i][j].im = 0.0;
-                            }
-                        }
-
-                        // loop from vacuum layer to innermost crossed layer
-                        for (int i = 0; i <= MaxLayer ; i++ ){
-                            const FLOAT_T distance = getTraversedDistanceOfLayer(radii, i, MaxLayer, PathLength, TotalEarthLength, cosine_zenith);
-                            const FLOAT_T density = getDensityOfLayer(rhos, yps, i, MaxLayer);
-
-                            get_transition_matrix( type,
-                                                    energy	,		   // in GeV
-		                                    density,
-                                                    distance / Constants<FLOAT_T>::km2cm(),
-                                                    TransitionMatrix,			   // Output transition matrix
-                                                    FLOAT_T(0.0)  					   // phase offset
-                                                    );
-
-                            if (i == 0){    // atmosphere
-                                copy_complex_matrix( TransitionMatrix , finalTransitionMatrix );
-                            }else if(i < MaxLayer){ // not the innermost layer, can reuse current TransitionMatrix
-                                clear_complex_matrix( TransitionTemp );
-                                multiply_complex_matrix( TransitionMatrix, finalTransitionMatrix, TransitionTemp );
-                                copy_complex_matrix( TransitionTemp, finalTransitionMatrix );
-
-                                clear_complex_matrix( TransitionTemp );
-                                multiply_complex_matrix( TransitionMatrixCoreToMantle, TransitionMatrix, TransitionTemp );
-                                copy_complex_matrix( TransitionTemp, TransitionMatrixCoreToMantle );
-                            }else{ // innermost layer
-                                clear_complex_matrix( TransitionTemp );
-                                multiply_complex_matrix( TransitionMatrix, finalTransitionMatrix, TransitionTemp );
-                                copy_complex_matrix( TransitionTemp, finalTransitionMatrix );
-                            }
-                        }
-
-                        // calculate final transition matrix
-                        clear_complex_matrix( TransitionTemp );
-                        multiply_complex_matrix( TransitionMatrixCoreToMantle, finalTransitionMatrix, TransitionTemp );
-                        copy_complex_matrix( TransitionTemp, finalTransitionMatrix );
-
-                        // for oscillation probabilities where the initial wave function
-                        // evaluates to 0+0i for two flavors and evaluates to 1+0i for the remaining third flavor,
-                        // we don't need to perform full matrix vector multiplication
-                        UNROLLQUALIFIER
-                        for (int inflv = 0 ; inflv < 3 ; inflv++ ){
-                            UNROLLQUALIFIER
-                            for (int outflv = 0 ; outflv < 3 ; outflv++ ){
-                                const FLOAT_T re = finalTransitionMatrix[outflv][inflv].re;
-                                const FLOAT_T im = finalTransitionMatrix[outflv][inflv].im;
-
-                            #ifdef __CUDA_ARCH__
-                                const unsigned long long resultIndex = (unsigned long long)(n_energies) * (unsigned long long)(index_cosine) + (unsigned long long)(index_energy);
-                                result[resultIndex + (unsigned long long)(n_energies) * (unsigned long long)(n_cosines) * (unsigned long long)((inflv * 3 + outflv))] = re * re + im * im;
-                            #else
-                                const unsigned long long resultIndex = (unsigned long long)(index_cosine) * (unsigned long long)(n_energies) * (unsigned long long)(9)
-                                                    + (unsigned long long)(index_energy) * (unsigned long long)(9);
-                                result[resultIndex + (unsigned long long)((inflv * 3 + outflv))] = re * re + im * im;
-                            #endif
-
-                            }
-                        }
-                    }
+		}
+	      }
+	    }
+	    */
+            
+	    for (int i=0;i<3;i++) {
+              for (int j=0;j<3;j++) {
+                for (int f=0;f<3;f++) {
+                  totalLenShiftFactor = 1.;
                 }
+              }
             }
+	    
+	    for (int k=0;k<3;k++) {
+	      for (int m=0;m<3;m++) {
+		for (int n=0;n<3;n++) {
+		  Prob[n][m] = C_re[k][m][n]*C_re[k][m][n] + C_im[k][m][n]*C_im[k][m][n];
+		}
+	      }
+
+	      for (int kk=0;kk<k;kk++) {
+		std::complex<FLOAT_T> ek (cosarg[k], sinarg[k]);
+		std::complex<FLOAT_T> ekk (cosarg[kk], sinarg[kk]);
+		std::complex<FLOAT_T> phase = ek*conj(ekk);
+
+		for (int n=0;n<3;n++) {
+		  std::complex<FLOAT_T> sphase = phase*totalLenShiftFactor[ieig_atm[k]][ieig_atm[kk]][n];
+		  for (int m=0;m<3;m++) {
+		    Prob[n][m] += 2. * C_re[kk][m][n] * C_re[k][m][n] * real(sphase)
+		               +  2. * C_im[kk][m][n] * C_im[k][m][n] * real(sphase)
+		               +  2. * C_im[kk][m][n] * C_re[k][m][n] * imag(sphase)
+		               +  2. * C_im[kk][m][n] * C_im[k][m][n] * imag(sphase);
+		  }
+		}
+	      }
+	    }	    
+
+	    return;
+	  }
+
+	  /***********************************************************************
+  getArg
+  
+  Transition matrix expanded as A = sum_k C_k exp(i arg_k).
+  This function returns arg, whereas getC returns C.
+  arg has index [k], where k is this expansion index.
+	  ***********************************************************************/
+	  template<typename FLOAT_T>
+          HOSTDEVICEQUALIFIER
+	  void getArg(FLOAT_T L, FLOAT_T E, FLOAT_T dmMatVac[][3], FLOAT_T arg[3], FLOAT_T phase_offset) {
+	    
+	    /* (1/2)*(1/(h_bar*c)) in units of GeV/(eV^2-km) */
+	    const FLOAT_T LoEfac = 2.534;
+
+	    for (int k=0; k<3; k++) {
+	      arg[k] = -LoEfac*dmMatVac[k][0]*L/E;
+	      if ( k==2 ) arg[k] += phase_offset ;
+	    }
+	  }
+
+	  /***********************************************************************
+  getC
+  
+  Transition matrix expanded as A = sum_k C_k exp(i arg_k).
+  This function returns C, whereas getArg returns arg.
+  C_{re,im} have indices [k][row][col] where k is this expansion index.
+	  ***********************************************************************/
+          template<typename FLOAT_T>
+          HOSTDEVICEQUALIFIER
+	  void getC(FLOAT_T E, FLOAT_T rho,
+		  FLOAT_T dmMatVac[][3], FLOAT_T dmMatMat[][3],
+		  const NeutrinoType antitype, FLOAT_T C_re[3][3][3], FLOAT_T C_im[3][3][3], FLOAT_T phase_offset) {
+
+	  int n, m, i, j, k;
+	  math::ComplexNumber<FLOAT_T> product[3][3][3];
+
+	  if ( phase_offset==0.0 ) { 
+	    FLOAT_T L = NAN; // get_product doesn't use L, but the argument exists, so we pass NAN in case the implementation changes at some point so we can detect that something is wrong
+	    get_product(L, E, rho, dmMatVac, dmMatMat, antitype, product);
+	  }   
+  
+
+	  /* Compute the product with the mixing matrices */
+	  for (k=0; k<3; k++) {
+	    for (n=0; n<3; n++) {
+	      FLOAT_T RR_nk[3] = { 0., 0., 0. }; // [j]
+	      FLOAT_T RI_nk[3] = { 0., 0., 0. }; // [j]
+	      FLOAT_T IR_nk[3] = { 0., 0., 0. }; // [j]
+	      FLOAT_T II_nk[3] = { 0., 0., 0. }; // [j]
+	      for (i=0; i<3; i++) {
+		for (j=0; j<3; j++) {
+		  //RR_nk[j] += Mix_re[n][i]*product_re[i][j][k];
+		  //RI_nk[j] += Mix_re[n][i]*product_im[i][j][k];
+		  RR_nk[j] += U(n,i).re*product[i][j][k].re;
+		  RI_nk[j] += U(n,i).re*product[i][j][k].im;
+
+		  IR_nk[j] += U(n,i).im*product[i][j][k].re;
+		  II_nk[j] += U(n,i).im*product[i][j][k].im;
+		}   
+	      }   
+	      for (m=0; m<3; m++) {
+		FLOAT_T ReSum=0., ImSum=0.;
+		for (j=0; j<3; j++) {
+
+		  ReSum += RR_nk[j]*U(m,j).re;
+		  ReSum += RI_nk[j]*U(m,j).im;
+		  ReSum += IR_nk[j]*U(m,j).im;
+		  ReSum -= II_nk[j]*U(m,j).re;
+          
+		  ImSum += II_nk[j]*U(m,j).im;
+		  ImSum += IR_nk[j]*U(m,j).re;
+		  ImSum += RI_nk[j]*U(m,j).re;
+		  ImSum -= RR_nk[j]*U(m,j).im;
+		}
+		C_re[k][n][m]=ReSum;
+		C_im[k][n][m]=ImSum;
+	      }
+	    }
+	  }
+
+	}
 
 
+	  template<typename FLOAT_T>
+	  HOSTDEVICEQUALIFIER
+	  void calculate(NeutrinoType type,
+			 const FLOAT_T* const cosinelist,
+			 int n_cosines,
+			 const FLOAT_T* const energylist,
+			 int n_energies,
+			 const FLOAT_T* const productionHeight_prob_list, // 20 (nBins) * 2 (nu,nubar) * 3 (e,mu,tau) * n_energies * n_cosines
+			 const FLOAT_T* const productionHeight_bins_list, // 21 (BinEdges) in cm
+			 const FLOAT_T* const radii,
+			 const FLOAT_T* const rhos,
+			 const FLOAT_T* const yps,
+			 const int* const maxlayers,
+			 FLOAT_T* const result){
+	    
+            //prepare more constant data. For the kernel, this is done by the wrapper function callCalculateKernelAsync
+#ifndef __CUDA_ARCH__
+	    prepare_getMfast<FLOAT_T>(type);
+#endif
+	    
+#ifdef __CUDA_ARCH__
+	    // on the device, we use the global thread Id to index the data
+	    const int max_energies_per_path = SDIV(n_energies, blockDim.x) * blockDim.x;
+	    for(unsigned index = blockIdx.x * blockDim.x + threadIdx.x; index < n_cosines * max_energies_per_path; index += blockDim.x * gridDim.x){
+	      const unsigned index_energy = index % max_energies_per_path;
+	      const unsigned index_cosine = index / max_energies_per_path;
+#else
+	      // on the host, we use OpenMP to parallelize looping over cosines
+#pragma omp parallel for schedule(dynamic)
+	      for(int index_cosine = 0; index_cosine < n_cosines; index_cosine += 1){
+#endif
+		
+		const FLOAT_T cosine_zenith = cosinelist[index_cosine];
+		
+		const FLOAT_T TotalEarthLength =  -2.0*cosine_zenith*Constants<FLOAT_T>::REarthcm(); // in [cm]
+		const int MaxLayer = maxlayers[index_cosine];
+		
+		math::ComplexNumber<FLOAT_T> TransitionMatrix[3][3];
+		math::ComplexNumber<FLOAT_T> TransitionMatrixCoreToMantle[3][3];
+		math::ComplexNumber<FLOAT_T> finalTransitionMatrix[3][3];
+		math::ComplexNumber<FLOAT_T> TransitionTemp[3][3];
+
+		FLOAT_T ExpansionMatrix_re[3][3][3];
+		FLOAT_T ExpansionMatrix_im[3][3][3];
+		
+		FLOAT_T arg[MAXNLAYERS][3];
+
+		//FLOAT_T darg0_dProductionHeight[3];
+		
+		
+#ifndef __CUDA_ARCH__
+		for(int index_energy = 0; index_energy < n_energies; index_energy += 1){
+#else
+		  if(index_energy < n_energies){
+#endif
+		    
+		    const FLOAT_T energy = energylist[index_energy];
+		    
+		    const FLOAT_T ProductionHeightinCentimeter = 25000000.0;
+
+		    /*
+		    FLOAT_T PathLengths[NPRODHEIGHTBINS];
+		    for (int ih=0;ih<NPRODHEIGHTBINS;ih++) {
+		      FLOAT_T ProdHeight = (productionHeight_bins_list[ih]+productionHeight_bins_list[ih+1])/2.0;
+		      PathLengths[ih] = sqrt((Constants<FLOAT_T>::REarthcm() + ProdHeight )*(Constants<FLOAT_T>::REarthcm() + ProdHeight)
+					     - (Constants<FLOAT_T>::REarthcm()*Constants<FLOAT_T>::REarthcm())*( 1 - cosine_zenith*cosine_zenith)) - Constants<FLOAT_T>::REarthcm()*cosine_zenith;
+		    }
+		    */
+		    
+		    const FLOAT_T PathLength = sqrt((Constants<FLOAT_T>::REarthcm() + ProductionHeightinCentimeter )*(Constants<FLOAT_T>::REarthcm() + ProductionHeightinCentimeter)
+						    - (Constants<FLOAT_T>::REarthcm()*Constants<FLOAT_T>::REarthcm())*( 1 - cosine_zenith*cosine_zenith)) - Constants<FLOAT_T>::REarthcm()*cosine_zenith;
+		    
+		    // set TransitionMatrixCoreToMantle to unit matrix
+		    UNROLLQUALIFIER
+		      for(int i = 0; i < 3; i++){
+			UNROLLQUALIFIER
+			  for(int j = 0; j < 3; j++){
+			    TransitionMatrixCoreToMantle[i][j].re = (i == j ? 1.0 : 0.0);
+			    TransitionMatrixCoreToMantle[i][j].im = 0.0;
+			  }
+		      }
+
+		    for (int i=0;i<MAXNLAYERS;i++) { //Matches dimension of arg
+		      for (int f=0;f<3;f++) { //Flavour
+			arg[i][f] = 0.;
+		      }
+		    }
+		    
+		    // loop from vacuum layer to innermost crossed layer
+		    for (int i = 0; i <= MaxLayer ; i++ ){
+		      const FLOAT_T distance = getTraversedDistanceOfLayer(radii, i, MaxLayer, PathLength, TotalEarthLength, cosine_zenith);
+		      const FLOAT_T density = getDensityOfLayer(rhos, yps, i, MaxLayer);
+		      
+		      get_transition_matrix_expansion( type,
+						       energy     ,                  // in GeV
+						       density,
+						       distance / Constants<FLOAT_T>::km2cm(),
+						       ExpansionMatrix_re, ExpansionMatrix_im,
+						       arg[i],
+						       FLOAT_T(0.0)                                          // phase offset
+						       ); 
+		      
+		      if (i == 0){    // atmosphere
+			copy_complex_matrix( TransitionMatrix , finalTransitionMatrix );
+			
+			/*
+			if (distance==0) {
+			  for (int f=0;f<3;f++) {
+			    darg0_dProductionHeight[f] = 0.;
+			  }
+			} else {
+			  for (int f=0;f<3;f++) {
+			    darg0_dProductionHeight[f] = arg[i][f]/distance;
+			  }
+			}
+			*/
+
+		      }else if(i < MaxLayer){ // not the innermost layer, can reuse current TransitionMatrix
+			clear_complex_matrix( TransitionTemp );
+			multiply_complex_matrix( TransitionMatrix, finalTransitionMatrix, TransitionTemp );
+			copy_complex_matrix( TransitionTemp, finalTransitionMatrix );
+			
+			clear_complex_matrix( TransitionTemp );
+			multiply_complex_matrix( TransitionMatrixCoreToMantle, TransitionMatrix, TransitionTemp );
+			copy_complex_matrix( TransitionTemp, TransitionMatrixCoreToMantle );
+		      }else{ // innermost layer
+			clear_complex_matrix( TransitionTemp );
+			multiply_complex_matrix( TransitionMatrix, finalTransitionMatrix, TransitionTemp );
+			copy_complex_matrix( TransitionTemp, finalTransitionMatrix );
+		      }
+		    }
+		    
+		    // calculate final transition matrix
+		    clear_complex_matrix( TransitionTemp );
+		    multiply_complex_matrix( TransitionMatrixCoreToMantle, finalTransitionMatrix, TransitionTemp );
+		    copy_complex_matrix( TransitionTemp, finalTransitionMatrix );
+		    
+		    // for oscillation probabilities where the initial wave function
+		    // evaluates to 0+0i for two flavors and evaluates to 1+0i for the remaining third flavor,
+		    // we don't need to perform full matrix vector multiplication
+		    UNROLLQUALIFIER
+		      for (int inflv = 0 ; inflv < 3 ; inflv++ ){
+			UNROLLQUALIFIER
+			  for (int outflv = 0 ; outflv < 3 ; outflv++ ){
+			    const FLOAT_T re = finalTransitionMatrix[outflv][inflv].re;
+			    const FLOAT_T im = finalTransitionMatrix[outflv][inflv].im;
+			    
+#ifdef __CUDA_ARCH__
+			    const unsigned long long resultIndex = (unsigned long long)(n_energies) * (unsigned long long)(index_cosine) + (unsigned long long)(index_energy);
+			    result[resultIndex + (unsigned long long)(n_energies) * (unsigned long long)(n_cosines) * (unsigned long long)((inflv * 3 + outflv))] = re * re + im * im;
+#else
+			    const unsigned long long resultIndex = (unsigned long long)(index_cosine) * (unsigned long long)(n_energies) * (unsigned long long)(9)
+			      + (unsigned long long)(index_energy) * (unsigned long long)(9);
+			    result[resultIndex + (unsigned long long)((inflv * 3 + outflv))] = re * re + im * im;
+#endif
+			    
+			  }
+		      }
+		  }
+                }
+	      }
+	      
+	      
             #ifdef __NVCC__
             template<typename FLOAT_T>
             KERNEL

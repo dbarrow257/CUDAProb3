@@ -21,6 +21,7 @@ along with CUDAProb3++.  If not, see <http://www.gnu.org/licenses/>.
 #include "hpc_helpers.cuh"
 
 #define NPRODHEIGHTBINS 20
+#define MAXNLAYERS 12
 
 namespace cudaprob3{
 
