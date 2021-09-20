@@ -718,43 +718,26 @@ namespace cudaprob3{
 		const int MaxLayer = maxlayers[index_cosine];
 		
 		math::ComplexNumber<FLOAT_T> TransitionMatrix[3][3];
+		math::ComplexNumber<FLOAT_T> TransitionMatrix_Old[3][3];
+
 		math::ComplexNumber<FLOAT_T> TransitionMatrixCoreToMantle[3][3];
 		math::ComplexNumber<FLOAT_T> TransitionProduct[3][3];
 		math::ComplexNumber<FLOAT_T> TransitionTemp[3][3];
 
 		math::ComplexNumber<FLOAT_T> ExpansionMatrix[3][3][3];
-		
 		FLOAT_T arg[MAXNLAYERS][3];
-
-		FLOAT_T darg0_dProductionHeight[3];
-
-		FLOAT_T Prob[3][3];
-
-		//DB Not sure on this, or how I need to implement it with the production height averaging
-		int ieig_atm[3];
-		ieig_atm[0] = 0;
-		ieig_atm[1] = 1;
-		ieig_atm[2] = 2;
-		
 		
 #ifndef __CUDA_ARCH__
 		for(int index_energy = 0; index_energy < n_energies; index_energy += 1){
 #else
 		  if(index_energy < n_energies){
 #endif
-		    
-		    const FLOAT_T energy = energylist[index_energy];
-		    
-		    const FLOAT_T ProductionHeightinCentimeter = 25000000.0; //DB Need to calculate weighted average instead of dummy value
 
-		    //DB Calculate path lengths for all specified production heights
-		    FLOAT_T PathLengths[NPRODHEIGHTBINS];
-		    for (int ih=0;ih<NPRODHEIGHTBINS;ih++) {
-		      FLOAT_T ProdHeight = (productionHeight_bins_list[ih]+productionHeight_bins_list[ih+1])/2.0;
-		      PathLengths[ih] = sqrt((Constants<FLOAT_T>::REarthcm() + ProdHeight )*(Constants<FLOAT_T>::REarthcm() + ProdHeight)
-					     - (Constants<FLOAT_T>::REarthcm()*Constants<FLOAT_T>::REarthcm())*( 1 - cosine_zenith*cosine_zenith)) - Constants<FLOAT_T>::REarthcm()*cosine_zenith;
-		    }
-		    
+		    const FLOAT_T energy = energylist[index_energy];
+
+		    const FLOAT_T ProductionHeightinCentimeter = 2500000.0; //DB 25km in cm - Need to calculate weighted average instead of dummy value
+
+		    //PathLength is used to calculate the distance traversed
 		    const FLOAT_T PathLength = sqrt((Constants<FLOAT_T>::REarthcm() + ProductionHeightinCentimeter )*(Constants<FLOAT_T>::REarthcm() + ProductionHeightinCentimeter)
 						    - (Constants<FLOAT_T>::REarthcm()*Constants<FLOAT_T>::REarthcm())*( 1 - cosine_zenith*cosine_zenith)) - Constants<FLOAT_T>::REarthcm()*cosine_zenith;
 		    
@@ -778,7 +761,21 @@ namespace cudaprob3{
 		    for (int i = 0; i <= MaxLayer ; i++ ){
 		      const FLOAT_T distance = getTraversedDistanceOfLayer(radii, i, MaxLayer, PathLength, TotalEarthLength, cosine_zenith);
 		      const FLOAT_T density = getDensityOfLayer(rhos, yps, i, MaxLayer);
-		      
+		     
+		      //DB For each layer, A = sum_k C[k] exp(ia[k]) .. TransitionMatrix is A, ExpansionMatrix is C[k], TransitionProduct is the product of A for each layer (Prob3++)
+
+		      //A = 0
+		      clear_complex_matrix(TransitionMatrix);
+		      clear_complex_matrix(TransitionMatrix_Old);
+
+		      get_transition_matrix( type,
+					     energy,   // in GeV
+					     density,
+					     distance / Constants<FLOAT_T>::km2cm(),
+					     TransitionMatrix_Old,   // Output transition matrix
+					     FLOAT_T(0.0)     // phase offset
+					     );
+ 
 		      get_transition_matrix_expansion( type,
 						       energy     ,                  // in GeV
 						       density,
@@ -787,148 +784,60 @@ namespace cudaprob3{
 						       arg[i], //FLOAT_T[3]
 						       FLOAT_T(0.0)                                          // phase offset
 						       ); 
-		      
-		      //DB For each layer, A = sum_k C[k] exp(ia[k]) .. TransitionMatrix is A, ExpansionMatrix is C[k], TransitionProduct is the product of A for each layer (Prob3++)
-
-		      //A = 0
-		      clear_complex_matrix(TransitionMatrix);
+		     
 
 		      //Transition Matrix += exp(i arg) * ExpansionMatrix[layer]
 		      multiply_phase_matrix(arg[i],ExpansionMatrix[i],TransitionMatrix);
 
-		      if (i == 0){    // atmosphere
-			copy_complex_matrix(TransitionMatrix, TransitionProduct);
-			
-			if (distance==0) {
-			  for (int f=0;f<3;f++) {
-			    darg0_dProductionHeight[f] = 0.;
-			  }
-			} else {
-			  for (int f=0;f<3;f++) {
-			    darg0_dProductionHeight[f] = arg[i][f]/distance;
+		      for (int q=0;q<3;q++) {
+			for (int j=0;j<3;j++) {
+			  if ( fabs(TransitionMatrix[q][j].re - TransitionMatrix_Old[q][j].re)>1e-6 || fabs(TransitionMatrix[q][j].im - TransitionMatrix_Old[q][j].im)>1e-6 ) {
+			    printf("TransitionMatrix[q][j].re: %4.2f \n",TransitionMatrix[q][j].re);
+			    printf("TransitionMatrix[q][j].im: %4.2f \n",TransitionMatrix[q][j].im);
+			    printf("TransitionMatrix_Old[q][j].re: %4.2f \n",TransitionMatrix_Old[q][j].re);
+			    printf("TransitionMatrix_Old[q][j].im: %4.2f \n",TransitionMatrix_Old[q][j].im);
+			    exit(-1);
 			  }
 			}
+		      }
+
+		      if (i == 0){    // atmosphere
+			copy_complex_matrix(TransitionMatrix_Old, TransitionProduct);
 		      }else if(i < MaxLayer){ // not the innermost layer, can reuse current TransitionMatrix
-			clear_complex_matrix( TransitionTemp );
-			multiply_complex_matrix( TransitionMatrix, TransitionProduct, TransitionTemp );
-			copy_complex_matrix( TransitionTemp, TransitionProduct );
+			clear_complex_matrix(TransitionTemp);
+			multiply_complex_matrix(TransitionMatrix_Old, TransitionProduct, TransitionTemp);
+			copy_complex_matrix(TransitionTemp, TransitionProduct);
 			
-			clear_complex_matrix( TransitionTemp );
-			multiply_complex_matrix( TransitionMatrixCoreToMantle, TransitionMatrix, TransitionTemp );
-			copy_complex_matrix( TransitionTemp, TransitionMatrixCoreToMantle );
+			clear_complex_matrix(TransitionTemp);
+			multiply_complex_matrix(TransitionMatrixCoreToMantle, TransitionMatrix_Old, TransitionTemp);
+			copy_complex_matrix(TransitionTemp, TransitionMatrixCoreToMantle);
 		      }else{ // innermost layer
-			clear_complex_matrix( TransitionTemp );
-			multiply_complex_matrix( TransitionMatrix, TransitionProduct, TransitionTemp );
-			copy_complex_matrix( TransitionTemp, TransitionProduct );
+			clear_complex_matrix(TransitionTemp);
+			multiply_complex_matrix(TransitionMatrix_Old, TransitionProduct, TransitionTemp);
+			copy_complex_matrix(TransitionTemp, TransitionProduct);
 		      }
 		    }
 		    
 		    // calculate final transition matrix
-		    clear_complex_matrix( TransitionTemp );
-		    multiply_complex_matrix( TransitionMatrixCoreToMantle, TransitionProduct, TransitionTemp );
-		    copy_complex_matrix( TransitionTemp, TransitionProduct );
-
-		    for (int i=0;i<3;i++) {
-                      for (int j=0;j<3;j++) {
-			Prob[i][j] = 0.;
-		      }
-		    }
-		    
-		    math::ComplexNumber<FLOAT_T> totalLenShiftFactor[3][3][3];
-		    //DB Set unit matrix
-		    for (int i=0;i<3;i++) {
-		      for (int j=0;j<3;j++) {
-			for (int f=0;f<3;f++) {
-			  totalLenShiftFactor[i][j][f].re = (i == j ? 1.0 : 0.0);
-			  totalLenShiftFactor[i][j][f].im = 0.;
-			}
-		      }
-		    }
-
-
-		    for (int ih=0;ih<(NPRODHEIGHTBINS-1);ih++) {
-		      FLOAT_T h0 = PathLengths[ih];
-		      FLOAT_T h1 = PathLengths[ih+1];
-		      FLOAT_T hm = (h0+h1)/2.;
-		      FLOAT_T hw = (h1-h0);
-
-		      for (int ieig0=0;ieig0<3;ieig0++) { 
-			for (int jeig0=0;jeig0<3;jeig0++) { 
-			  FLOAT_T darg_dh = darg0_dProductionHeight[ieig0]-darg0_dProductionHeight[jeig0];
-			  
-			  //DB complexVal equals exp(complex(0.,darg_dh*hm)) * sinc(0.5*darg_dh*hw)
-			  //DB totalLenShiftFactor = Prob*complexVal + Prob*conj(complexVal);
-
-			  math::ComplexNumber<FLOAT_T> f;
-			  f.re = 0.;
-			  f.im = darg_dh*hm; 
-
-			  math::ComplexNumber<FLOAT_T> exp_f;
-			  exp_f.re = exp(f.re)*cos(f.im);
-			  exp_f.im = exp(f.re)*sin(f.im);
-
-			  math::ComplexNumber<FLOAT_T> sinc_exp_f;
-			  sinc_exp_f.re = sin(0.5*darg_dh*hw)/(0.5*darg_dh*hw) * exp_f.re;
-			  sinc_exp_f.im = sin(0.5*darg_dh*hw)/(0.5*darg_dh*hw) * exp_f.im;
-
-			  for (int flav=0;flav<3;flav++) { //In flav
-			    totalLenShiftFactor[ieig0][jeig0][flav].re += sinc_exp_f.re + sinc_exp_f.re; //DB Add probability weights into here
-			    totalLenShiftFactor[ieig0][jeig0][flav].im += sinc_exp_f.im - sinc_exp_f.im; //DB Add probability weights into here
-			  }
-			}
-		      }
-		    }
-
-		    for (int k=0;k<3;k++) { //Expansion k
-		      for (int m=0;m<3;m++) { //InFlav m
-			for (int n=0;n<3;n++) { //OutFlav n
-			  Prob[n][m] += TransitionProduct[m][n].re * TransitionProduct[m][n].re + TransitionProduct[m][n].im * TransitionProduct[m][n].im;
-			}
-		      }
-
-		      for (int kk=0;kk<k;kk++) {
-			math::ComplexNumber<FLOAT_T> ek;
-			ek.re = cos(arg[0][k]); //0 as only need atmospheric layer
-			ek.im = sin(arg[0][k]); //0 as only need atmospheric layer
-
-			math::ComplexNumber<FLOAT_T> ekk;
-			ekk.re = cos(arg[0][kk]); //0 as only need atmospheric layer
-			ekk.im = sin(arg[0][kk]); //0 as only need atmospheric layer
-			
-			math::ComplexNumber<FLOAT_T> phase;
-			//phase = ek * conj(ekk)
-			phase.re = ek.re*ekk.re - ek.im*ekk.im; 
-			phase.im = ek.im*ekk.re - ek.re*ekk.im;
-
-			for (int n=0;n<3;n++) {
-			  math::ComplexNumber<FLOAT_T> sphase;
-			  //sphase = phase * totalLenShiftFactor
-			  sphase.re = phase.re*totalLenShiftFactor[ieig_atm[k]][ieig_atm[kk]][n].re - phase.im*totalLenShiftFactor[ieig_atm[k]][ieig_atm[kk]][n].im;
-			  sphase.im = phase.im*totalLenShiftFactor[ieig_atm[k]][ieig_atm[kk]][n].re - phase.re*totalLenShiftFactor[ieig_atm[k]][ieig_atm[kk]][n].im;
-
-			  for (int m=0;m<3;m++) {
-			    //sphase has path length included
-			    Prob[n][m] += 2. * ExpansionMatrix[kk][m][n].re * ExpansionMatrix[k][m][n].re * sphase.re
-			               +  2. * ExpansionMatrix[kk][m][n].im * ExpansionMatrix[k][m][n].im * sphase.re
-			               +  2. * ExpansionMatrix[kk][m][n].im * ExpansionMatrix[k][m][n].re * sphase.im
-			               -  2. * ExpansionMatrix[kk][m][n].re * ExpansionMatrix[k][m][n].im * sphase.im;
-			  }
-			}
-		      }
-		    }
+		    clear_complex_matrix(TransitionTemp);
+		    multiply_complex_matrix(TransitionMatrixCoreToMantle, TransitionProduct, TransitionTemp);
+		    copy_complex_matrix(TransitionTemp, TransitionProduct);
 
 		    UNROLLQUALIFIER
 		      for (int inflv = 0 ; inflv < 3 ; inflv++ ){
                         UNROLLQUALIFIER
                           for (int outflv = 0 ; outflv < 3 ; outflv++ ){  
+			    const FLOAT_T re = TransitionProduct[outflv][inflv].re;
+			    const FLOAT_T im = TransitionProduct[outflv][inflv].im;
+
 #ifdef __CUDA_ARCH__
-                            const unsigned long long resultIndex = (unsigned long long)(n_energies) * (unsigned long long)(index_cosine) + (unsigned long long)(index_energy);
-                            result[resultIndex + (unsigned long long)(n_energies) * (unsigned long long)(n_cosines) * (unsigned long long)((inflv * 3 + outflv))] = Prob[inflv][outflv];
+			    const unsigned long long resultIndex = (unsigned long long)(n_energies) * (unsigned long long)(index_cosine) + (unsigned long long)(index_energy);
+			    result[resultIndex + (unsigned long long)(n_energies) * (unsigned long long)(n_cosines) * (unsigned long long)((inflv * 3 + outflv))] = re * re + im * im;
 #else
-                            const unsigned long long resultIndex = (unsigned long long)(index_cosine) * (unsigned long long)(n_energies) * (unsigned long long)(9)
-                              + (unsigned long long)(index_energy) * (unsigned long long)(9);
-                            result[resultIndex + (unsigned long long)((inflv * 3 + outflv))] = Prob[inflv][outflv];
-#endif 
+			    const unsigned long long resultIndex = (unsigned long long)(index_cosine) * (unsigned long long)(n_energies) * (unsigned long long)(9)
+			      + (unsigned long long)(index_energy) * (unsigned long long)(9);
+			    result[resultIndex + (unsigned long long)((inflv * 3 + outflv))] = re * re + im * im;
+#endif
 			  }
 		      }
 		  }
