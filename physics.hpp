@@ -786,8 +786,10 @@ namespace cudaprob3{
 						       ); 
 		     
 
-		      //Transition Matrix += exp(i arg) * ExpansionMatrix[layer]
-		      multiply_phase_matrix(arg[i],ExpansionMatrix[i],TransitionMatrix);
+		      //Transition Matrix += exp(i arg) * ExpansionMatrix[exp]
+		      for (int q=0;q<3;q++) {
+			multiply_phase_matrix(arg[i],ExpansionMatrix[q],TransitionMatrix);
+		      }
 
 		      for (int q=0;q<3;q++) {
 			for (int j=0;j<3;j++) {
