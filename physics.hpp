@@ -477,10 +477,10 @@ namespace cudaprob3{
                 FLOAT_T II_nk[3] = { 0., 0., 0. }; // [j]
                 for (int i=0; i<3; i++) {
                   for (int j=0; j<3; j++) {
-                    RR_nk[j] += U(n,i).re * product[i][j][k].re;
-                    RI_nk[j] += U(n,i).re * product[i][j][k].im;
-                    IR_nk[j] += U(n,i).im * product[i][j][k].re;
-                    II_nk[j] += U(n,i).im * product[i][j][k].im;
+                    RR_nk[j] += U(n,i).re * product[k][i][j].re;
+                    RI_nk[j] += U(n,i).re * product[k][i][j].im;
+                    IR_nk[j] += U(n,i).im * product[k][i][j].re;
+                    II_nk[j] += U(n,i).im * product[k][i][j].im;
                   }
                 }
                 for (int m=0; m<3; m++) {
@@ -613,7 +613,8 @@ namespace cudaprob3{
 	    getMfast(Enu, rho, nutype, d_dmMatMat, d_dmMatVac);
 	    
 	    getArg(Len, Enu, d_dmMatVac, Arg, phase_offset);
-	    getC_Alt(Enu, rho, d_dmMatVac, d_dmMatMat, nutype, phase_offset, Cout);
+	    //getC_Alt(Enu, rho, d_dmMatVac, d_dmMatMat, nutype, phase_offset, Cout);
+	    getC(Enu, rho, d_dmMatVac, d_dmMatMat, nutype, phase_offset, Cout);
 	  }
 	  
 	  /*
