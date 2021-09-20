@@ -458,118 +458,75 @@ namespace cudaprob3{
 	  ***********************************************************************/
           template<typename FLOAT_T>
           HOSTDEVICEQUALIFIER
-	  void getC(FLOAT_T E, FLOAT_T rho,
-		  FLOAT_T dmMatVac[][3], FLOAT_T dmMatMat[][3],
-		    const NeutrinoType antitype,  math::ComplexNumber<FLOAT_T> Cout[3][3][3], FLOAT_T phase_offset) {
+          void getC(FLOAT_T E, FLOAT_T rho, FLOAT_T d_dmMatVac[][3], FLOAT_T d_dmMatMat[][3],
+                    NeutrinoType type, FLOAT_T phase_offset, math::ComplexNumber<FLOAT_T> C[3][3][3]){
+
+	    math::ComplexNumber<FLOAT_T> product[3][3][3];
+
+            if (phase_offset == 0.0) {
+	      FLOAT_T L = NAN;
+              get_product(L, E, rho, d_dmMatVac, d_dmMatMat, type, product);
+            }
+
+            /* Compute the product with the mixing matrices */
+            for (int k=0; k<3; k++) {
+              for (int n=0; n<3; n++) {
+                FLOAT_T RR_nk[3] = { 0., 0., 0. }; // [j]
+                FLOAT_T RI_nk[3] = { 0., 0., 0. }; // [j]
+                FLOAT_T IR_nk[3] = { 0., 0., 0. }; // [j]
+                FLOAT_T II_nk[3] = { 0., 0., 0. }; // [j]
+                for (int i=0; i<3; i++) {
+                  for (int j=0; j<3; j++) {
+                    RR_nk[j] += U(n,i).re * product[i][j][k].re;
+                    RI_nk[j] += U(n,i).re * product[i][j][k].im;
+                    IR_nk[j] += U(n,i).im * product[i][j][k].re;
+                    II_nk[j] += U(n,i).im * product[i][j][k].im;
+                  }
+                }
+                for (int m=0; m<3; m++) {
+                  FLOAT_T ReSum=0., ImSum=0.;
+                  for (int j=0; j<3; j++) {
+                    ReSum += RR_nk[j] * U(m,j).re;
+                    ReSum += RI_nk[j] * U(m,j).im;
+                    ReSum += IR_nk[j] * U(m,j).im;
+                    ReSum -= II_nk[j] * U(m,j).re;
+
+                    ImSum += II_nk[j] * U(m,j).im;
+                    ImSum += IR_nk[j] * U(m,j).im;
+                    ImSum += RI_nk[j] * U(m,j).re;
+                    ImSum -= RR_nk[j] * U(m,j).im;
+
+                  }
+
+                  C[k][n][m].re = ReSum;
+                  C[k][n][m].im = ImSum;
+
+                }
+              }
+            }
 	    
-	  int n, m, i, j, k;
-	  math::ComplexNumber<FLOAT_T> product[3][3][3];
-
-	  if ( phase_offset==0.0 ) { 
-	    FLOAT_T L = NAN; // get_product doesn't use L, but the argument exists, so we pass NAN in case the implementation changes at some point so we can detect that something is wrong
-	    get_product(L, E, rho, dmMatVac, dmMatMat, antitype, product);
-	  }   
-  
-
-	  /* Compute the product with the mixing matrices */
-	  for (k=0; k<3; k++) {
-	    for (n=0; n<3; n++) {
-	      FLOAT_T RR_nk[3] = { 0., 0., 0. }; // [j]
-	      FLOAT_T RI_nk[3] = { 0., 0., 0. }; // [j]
-	      FLOAT_T IR_nk[3] = { 0., 0., 0. }; // [j]
-	      FLOAT_T II_nk[3] = { 0., 0., 0. }; // [j]
-	      for (i=0; i<3; i++) {
-		for (j=0; j<3; j++) {
-		  //RR_nk[j] += Mix_re[n][i]*product_re[i][j][k];
-		  //RI_nk[j] += Mix_re[n][i]*product_im[i][j][k];
-		  RR_nk[j] += U(n,i).re*product[i][j][k].re;
-		  RI_nk[j] += U(n,i).re*product[i][j][k].im;
-
-		  IR_nk[j] += U(n,i).im*product[i][j][k].re;
-		  II_nk[j] += U(n,i).im*product[i][j][k].im;
-		}   
-	      }   
-	      for (m=0; m<3; m++) {
-		FLOAT_T ReSum=0., ImSum=0.;
-		for (j=0; j<3; j++) {
-
-		  ReSum += RR_nk[j]*U(m,j).re;
-		  ReSum += RI_nk[j]*U(m,j).im;
-		  ReSum += IR_nk[j]*U(m,j).im;
-		  ReSum -= II_nk[j]*U(m,j).re;
-          
-		  ImSum += II_nk[j]*U(m,j).im;
-		  ImSum += IR_nk[j]*U(m,j).re;
-		  ImSum += RI_nk[j]*U(m,j).re;
-		  ImSum -= RR_nk[j]*U(m,j).im;
-		}
-		Cout[k][n][m].re=ReSum;
-		Cout[k][n][m].im=ImSum;
-	      }
-	    }
-	  }
-
-	}
-
+          }
 
 	  template<typename FLOAT_T>
 	  HOSTDEVICEQUALIFIER
-	  void getA(const FLOAT_T L, const FLOAT_T E, const FLOAT_T rho, const FLOAT_T d_dmMatVac[][3], const FLOAT_T d_dmMatMat[][3],
-		    const NeutrinoType type, math::ComplexNumber<FLOAT_T> A[3][3], const FLOAT_T phase_offset){
+          void getA(FLOAT_T E, FLOAT_T rho, FLOAT_T d_dmMatVac[][3], FLOAT_T d_dmMatMat[][3],NeutrinoType type, FLOAT_T phase_offset, FLOAT_T Arg[3], math::ComplexNumber<FLOAT_T> A[3][3]) {
+
 	    
-	    math::ComplexNumber<FLOAT_T> X[3][3];
 	    math::ComplexNumber<FLOAT_T> product[3][3][3];
-	    
-	    FLOAT_T arg[3];
-	    getArg(L,E,d_dmMatVac,arg,phase_offset);
 
 	    if (phase_offset == 0.0) {
+	      FLOAT_T L = NAN;
 	      get_product(L, E, rho, d_dmMatVac, d_dmMatMat, type, product);
 	    }
-	    
-	    /* Make the sum with the exponential factor in Eq. (11) */
-	    //memset(X, 0, 3*3*sizeof(math::ComplexNumber<FLOAT_T>));
-	    UNROLLQUALIFIER
-	      for (int i=0; i<3; i++) {
-		UNROLLQUALIFIER
-		  for (int j=0; j<3; j++) {
-		    X[i][j].re = 0;
-		    X[i][j].im = 0;
-		  }
-	      }
 
-	    UNROLLQUALIFIER
-	      for (int k=0; k<3; k++) {
-		
-#ifdef __CUDACC__
-		FLOAT_T c,s;
-		sincos(arg[k], &s, &c);
-#else
-		const FLOAT_T s = sin(arg[k]);
-		const FLOAT_T c = cos(arg[k]);
-#endif
-		UNROLLQUALIFIER
-		  for (int i=0; i<3; i++) {
-		    UNROLLQUALIFIER
-		      for (int j=0; j<3; j++) {
-                            X[i][j].re += c*product[i][j][k].re - s*product[i][j][k].im;
-                            X[i][j].im += c*product[i][j][k].im + s*product[i][j][k].re;
-		      }
-		  }
-	      }
-	    
-	    /* Eq. (10)*/
-	    //memset(A, 0, 3*3*2*sizeof(FLOAT_T));
-	    
-	    UNROLLQUALIFIER
-	      for (int n=0; n<3; n++) {
-		UNROLLQUALIFIER
-		  for (int m=0; m<3; m++) {
-		    A[n][m].re = 0;
-		    A[n][m].im = 0;
-		  }
-	      }
-	    
+	    math::ComplexNumber<FLOAT_T> X[3][3];
+	    clear_complex_matrix(X);
+	    multiply_phase_matrix(Arg, product, X);
+
+	    clear_complex_matrix(A);
+
+	    //DB Think AXFAC(incoming nu flav, outgoing nu flav, row, column, part)
+
 	    UNROLLQUALIFIER
 	      for (int n=0; n<3; n++) {
 		UNROLLQUALIFIER
@@ -589,8 +546,57 @@ namespace cudaprob3{
 		      }
 		  }
 	      }
+
 	  }
-	  
+
+          template<typename FLOAT_T>
+          HOSTDEVICEQUALIFIER
+          void getC_Alt(FLOAT_T E, FLOAT_T rho, FLOAT_T d_dmMatVac[][3], FLOAT_T d_dmMatMat[][3],NeutrinoType type, FLOAT_T phase_offset, math::ComplexNumber<FLOAT_T> C[3][3][3]) {
+
+	    math::ComplexNumber<FLOAT_T> product[3][3][3];
+
+            if (phase_offset == 0.0) {
+              FLOAT_T L = NAN;
+              get_product(L, E, rho, d_dmMatVac, d_dmMatMat, type, product);
+            }
+
+	    for (int k=0;k<3;k++) {
+	      clear_complex_matrix(C[k]);
+	    }
+
+            //DB Think AXFAC(incoming nu flav, outgoing nu flav, row, column, part)                                                                                                                         
+            UNROLLQUALIFIER
+	      for (int k=0;k<3;k++) {
+		UNROLLQUALIFIER
+		  for (int n=0; n<3; n++) {
+		    UNROLLQUALIFIER
+		      for (int m=0; m<3; m++) {
+			UNROLLQUALIFIER
+			  for (int i=0; i<3; i++) {
+			    UNROLLQUALIFIER
+			      for (int j=0; j<3; j++) {
+				// use precomputed factors                                                                                                                                                      
+				C[k][n][m].re +=
+				  AXFAC(n,m,i,j,0) * product[k][i][j].re +
+				  AXFAC(n,m,i,j,1) * product[k][i][j].im;
+				C[k][n][m].im +=
+				  AXFAC(n,m,i,j,2) * product[k][i][j].im +
+				  AXFAC(n,m,i,j,3) * product[k][i][j].re;
+
+				/*
+				C[k][n][m].re +=
+				  AXFAC(n,m,i,j,0) * product[i][j][k].re +
+				  AXFAC(n,m,i,j,1) * product[i][j][k].im;
+				C[k][n][m].im +=
+				  AXFAC(n,m,i,j,2) * product[i][j][k].im +
+				  AXFAC(n,m,i,j,3) * product[i][j][k].re;
+				*/
+			      }
+			  }
+		      }
+		  }
+	      }
+          }
 	  
 	  //##########################################################
 	  /*
@@ -601,28 +607,28 @@ namespace cudaprob3{
 	   */
 	  template<typename FLOAT_T>
 	  HOSTDEVICEQUALIFIER
-	  void get_transition_matrix_expansion(const NeutrinoType nutype,FLOAT_T Enu,FLOAT_T rho,FLOAT_T Len, math::ComplexNumber<FLOAT_T> Cout[3][3][3], FLOAT_T argout[3],FLOAT_T phase_offset)
+	  void get_transition_matrix_expansion(NeutrinoType nutype, FLOAT_T Enu, FLOAT_T rho, FLOAT_T Len, math::ComplexNumber<FLOAT_T> Cout[3][3][3], FLOAT_T Arg[3], FLOAT_T phase_offset)
 	  {
 	    FLOAT_T d_dmMatVac[3][3], d_dmMatMat[3][3];
 	    getMfast(Enu, rho, nutype, d_dmMatMat, d_dmMatVac);
-
-	    //getArg(Len, Enu, d_dmMatVac, argout, phase_offset);
-	    getC(Enu, rho, d_dmMatVac, d_dmMatMat, nutype, Cout, phase_offset);
+	    
+	    getArg(Len, Enu, d_dmMatVac, Arg, phase_offset);
+	    getC_Alt(Enu, rho, d_dmMatVac, d_dmMatMat, nutype, phase_offset, Cout);
 	  }
-
-            /*
-             * Get 3x3 transition amplitude Aout for neutrino with energy E travelling Len kilometers through matter of constant density rho
-             */
-            template<typename FLOAT_T>
-            HOSTDEVICEQUALIFIER
-            void get_transition_matrix(const NeutrinoType type, const FLOAT_T Enu, const FLOAT_T rho, const FLOAT_T Len,
-                                        math::ComplexNumber<FLOAT_T> Aout[][3], const FLOAT_T phase_offset){
-
-                FLOAT_T d_dmMatVac[3][3], d_dmMatMat[3][3];
-
-                getMfast(Enu, rho, type, d_dmMatMat, d_dmMatVac);
-                getA(Len, Enu, rho, d_dmMatVac, d_dmMatMat, type, Aout,phase_offset);
-            }
+	  
+	  /*
+	   * Get 3x3 transition amplitude Aout for neutrino with energy E travelling Len kilometers through matter of constant density rho
+	   */
+	  template<typename FLOAT_T>
+	  HOSTDEVICEQUALIFIER
+	  void get_transition_matrix(NeutrinoType nutype, FLOAT_T Enu, FLOAT_T rho, FLOAT_T Len, math::ComplexNumber<FLOAT_T> Aout[3][3], FLOAT_T Arg[3], FLOAT_T phase_offset){
+	    
+	    FLOAT_T d_dmMatVac[3][3], d_dmMatMat[3][3];
+	    getMfast(Enu, rho, nutype, d_dmMatMat, d_dmMatVac);
+	    
+	    getArg(Len, Enu, d_dmMatVac, Arg, phase_offset);
+	    getA(Enu, rho, d_dmMatVac, d_dmMatMat, nutype, phase_offset, Arg, Aout);
+	  }
 
             /*
                 Find density in layer
@@ -718,7 +724,9 @@ namespace cudaprob3{
 		math::ComplexNumber<FLOAT_T> TransitionTemp[3][3];
 
 		math::ComplexNumber<FLOAT_T> ExpansionMatrix[3][3][3];
+
 		FLOAT_T arg[3];
+		FLOAT_T arg_old[3];
 		
 #ifndef __CUDA_ARCH__
 		for(int index_energy = 0; index_energy < n_energies; index_energy += 1){
@@ -746,6 +754,7 @@ namespace cudaprob3{
 
 		    for (int f=0;f<3;f++) { //Flavour
 		      arg[f] = 0.;
+		      arg_old[f] = 0.;
 		    }
 		    
 		    // loop from vacuum layer to innermost crossed layer
@@ -764,6 +773,7 @@ namespace cudaprob3{
 					     density,
 					     distance / Constants<FLOAT_T>::km2cm(),
 					     TransitionMatrix_Old,   // Output transition matrix
+					     arg_old,
 					     FLOAT_T(0.0)     // phase offset
 					     );
  
@@ -775,14 +785,10 @@ namespace cudaprob3{
 						       arg, //FLOAT_T[3]
 						       FLOAT_T(0.0)                                          // phase offset
 						       ); 
-		     
-
+		     		      
 		      //Transition Matrix += exp(i arg) * ExpansionMatrix[exp]
-		      for (int q=0;q<3;q++) {
-			multiply_phase_matrix(arg[i],ExpansionMatrix[q],TransitionMatrix);
-		      }
+		      multiply_phase_matrix(arg,ExpansionMatrix,TransitionMatrix);
 
-		      /*
 		      for (int q=0;q<3;q++) {
 			for (int j=0;j<3;j++) {
 			  if ( fabs(TransitionMatrix[q][j].re - TransitionMatrix_Old[q][j].re)>1e-6 || fabs(TransitionMatrix[q][j].im - TransitionMatrix_Old[q][j].im)>1e-6 ) {
@@ -790,11 +796,57 @@ namespace cudaprob3{
 			    printf("TransitionMatrix[q][j].im: %4.2f \n",TransitionMatrix[q][j].im);
 			    printf("TransitionMatrix_Old[q][j].re: %4.2f \n",TransitionMatrix_Old[q][j].re);
 			    printf("TransitionMatrix_Old[q][j].im: %4.2f \n",TransitionMatrix_Old[q][j].im);
+
+			    std::cout << "------------ Arg[i] -------------" << std::endl;
+			    for (int i=0;i<3;i++) {
+			      std::cout << "arg[" << i << "]:" << arg[i] << std::endl;
+			    }
+
+			    std::cout << "------------ Arg_Old[i] -------------" << std::endl;
+			    for (int i=0;i<3;i++) {
+			      std::cout << "arg_Old[" << i << "]:" << arg_old[i] << std::endl;
+			    }
+
+			    std::cout << "------------ ExpansionMatrix[k,i,j] -------------" << std::endl;
+			    for (int k=0;k<3;k++) {
+			      for (int i=0;i<3;i++) {
+				for (int j=0;j<3;j++) {
+				  std::cout << "ExpansionMatrix[" << k << "," << i << "," << j << "].re:" << ExpansionMatrix[k][i][j].re << std::endl;
+				  std::cout << "ExpansionMatrix[" << k << "," << i << "," << j << "].im:" << ExpansionMatrix[k][i][j].im << std::endl;
+				}
+			      }
+			    }
+
+			    std::cout << "------------ TransitionMatrix[i,j] -------------" << std::endl;
+			    for (int i=0;i<3;i++) {
+			      for (int j=0;j<3;j++) {
+
+				if (fabs(TransitionMatrix[i][j].re) < 1e-9) {
+				  std::cout << "TransitionMatrix[" << i << "," << j << "].re:" << 0 << std::endl;
+				} else {
+				  std::cout << "TransitionMatrix[" << i << "," << j << "].re:" << TransitionMatrix[i][j].re << std::endl;
+				}
+
+				if (fabs(TransitionMatrix[i][j].im) < 1e-9) {
+				  std::cout << "TransitionMatrix[" << i << "," << j << "].im:" << 0 << std::endl;
+				} else {
+				  std::cout << "TransitionMatrix[" << i << "," << j << "].im:" << TransitionMatrix[i][j].im << std::endl;
+				}
+			      }
+			    }
+
+			    std::cout << "------------ TransitionMatrix_Old[i,j] -------------" << std::endl;
+			    for (int i=0;i<3;i++) {
+			      for (int j=0;j<3;j++) {
+				std::cout << "TransitionMatrix_Old[" << i << "," << j << "].re:" << TransitionMatrix_Old[i][j].re << std::endl;
+				std::cout << "TransitionMatrix_Old[" << i << "," << j << "].im:" << TransitionMatrix_Old[i][j].im << std::endl;
+			      }
+			    }
+
 			    exit(-1);
 			  }
 			}
 		      }
-		      */
 
 		      if (i == 0){    // atmosphere
 			copy_complex_matrix(TransitionMatrix_Old, TransitionProduct);

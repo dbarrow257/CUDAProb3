@@ -65,11 +65,22 @@ namespace cudaprob3{
 
       template<typename FLOAT_T>
       HOSTDEVICEQUALIFIER
-      void multiply_phase_matrix(FLOAT_T A, ComplexNumber<FLOAT_T> B[3][3], ComplexNumber<FLOAT_T> C[3][3]){
-	for (int i=0; i<3; i++) {
-	  for (int j=0; j<3; j++) {
-	    C[i][j].re += cos(A) * B[i][j].re - sin(A) * B[i][j].im;
-	    C[i][j].im += cos(A) * B[i][j].im + sin(A) * B[i][j].re;
+      void multiply_phase_matrix(FLOAT_T A[3], ComplexNumber<FLOAT_T> B[3][3][3], ComplexNumber<FLOAT_T> C[3][3]){
+
+	for (int k=0;k<3;k++) {
+#ifdef __CUDACC__
+	  FLOAT_T c,s;
+	  sincos(A[k], &s, &c);
+#else
+	  const FLOAT_T s = sin(A[k]);
+	  const FLOAT_T c = cos(A[k]);
+#endif
+	  
+	  for (int i=0; i<3; i++) {
+	    for (int j=0; j<3; j++) {
+	      C[i][j].re += c * B[i][j][k].re - s * B[i][j][k].im;
+	      C[i][j].im += c * B[i][j][k].im + s * B[i][j][k].re;
+	    }
 	  }
 	}
       }
