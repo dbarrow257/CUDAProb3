@@ -730,6 +730,7 @@ namespace cudaprob3{
 
 		FLOAT_T Prob[3][3];
 
+		//DB Not sure on this, or how I need to implement it with the production height averaging
 		int ieig_atm[3];
 		ieig_atm[0] = 0;
 		ieig_atm[1] = 1;
@@ -746,6 +747,7 @@ namespace cudaprob3{
 		    
 		    const FLOAT_T ProductionHeightinCentimeter = 25000000.0; //DB Need to calculate weighted average instead of dummy value
 
+		    //DB Calculate path lengths for all specified production heights
 		    FLOAT_T PathLengths[NPRODHEIGHTBINS];
 		    for (int ih=0;ih<NPRODHEIGHTBINS;ih++) {
 		      FLOAT_T ProdHeight = (productionHeight_bins_list[ih]+productionHeight_bins_list[ih+1])/2.0;
@@ -808,15 +810,15 @@ namespace cudaprob3{
 			}
 		      }else if(i < MaxLayer){ // not the innermost layer, can reuse current TransitionMatrix
 			clear_complex_matrix( TransitionTemp );
-			multiply_complex_matrix( ExpansionMatrix[i], TransitionProduct, TransitionTemp );
+			multiply_complex_matrix( TransitionMatrix, TransitionProduct, TransitionTemp );
 			copy_complex_matrix( TransitionTemp, TransitionProduct );
 			
 			clear_complex_matrix( TransitionTemp );
-			multiply_complex_matrix( TransitionMatrixCoreToMantle, ExpansionMatrix[i], TransitionTemp );
+			multiply_complex_matrix( TransitionMatrixCoreToMantle, TransitionMatrix, TransitionTemp );
 			copy_complex_matrix( TransitionTemp, TransitionMatrixCoreToMantle );
 		      }else{ // innermost layer
 			clear_complex_matrix( TransitionTemp );
-			multiply_complex_matrix( ExpansionMatrix[i], TransitionProduct, TransitionTemp );
+			multiply_complex_matrix( TransitionMatrix, TransitionProduct, TransitionTemp );
 			copy_complex_matrix( TransitionTemp, TransitionProduct );
 		      }
 		    }
