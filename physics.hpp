@@ -788,10 +788,11 @@ namespace cudaprob3{
 		      
 		      //DB For each layer, A = sum_k C[k] exp(ia[k]) .. TransitionMatrix is A, ExpansionMatrix is C[k], TransitionProduct is the product of A for each layer (Prob3++)
 
+		      //A = 0
 		      clear_complex_matrix(TransitionMatrix);
 
+		      //Transition Matrix += exp(i arg) * ExpansionMatrix[layer]
 		      multiply_phase_matrix(arg[i],ExpansionMatrix[i],TransitionMatrix);
-
 
 		      if (i == 0){    // atmosphere
 			copy_complex_matrix(TransitionMatrix, TransitionProduct);
@@ -879,7 +880,7 @@ namespace cudaprob3{
 		    for (int k=0;k<3;k++) { //Expansion k
 		      for (int m=0;m<3;m++) { //InFlav m
 			for (int n=0;n<3;n++) { //OutFlav n
-			  Prob[n][m] += ExpansionMatrix[k][m][n].re * ExpansionMatrix[k][m][n].re + ExpansionMatrix[k][m][n].im * ExpansionMatrix[k][m][n].im;
+			  Prob[n][m] += TransitionProduct[m][n].re * TransitionProduct[m][n].re + TransitionProduct[m][n].im * TransitionProduct[m][n].im;
 			}
 		      }
 
