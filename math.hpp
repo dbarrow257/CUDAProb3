@@ -63,6 +63,17 @@ namespace cudaprob3{
             }
         }
 
+      template<typename FLOAT_T>
+      HOSTDEVICEQUALIFIER
+      void multiply_phase_matrix(FLOAT_T A[3], ComplexNumber<FLOAT_T> B[3][3], ComplexNumber<FLOAT_T> C[3][3]){
+	for (int i=0; i<3; i++) {
+	  for (int j=0; j<3; j++) {
+	    C[i][j].re = cos(A[i]) * B[i][j].re - sin(A[i]) * B[i][j].im;
+	    C[i][j].im = cos(A[i]) * B[i][j].im + sin(A[i]) * B[i][j].re;
+	  }
+	}
+      }
+
         /*
         *   multiply complex 3x3 matrix and 3 vector
         *        W = A X V

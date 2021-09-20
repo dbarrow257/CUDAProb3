@@ -428,94 +428,176 @@ namespace cudaprob3{
                     }
                 }
             }
+	  
+	  /***********************************************************************
+  getArg
+  
+  Transition matrix expanded as A = sum_k C_k exp(i arg_k).
+  This function returns arg, whereas getC returns C.
+  arg has index [k], where k is this expansion index.
+	  ***********************************************************************/
+	  template<typename FLOAT_T>
+          HOSTDEVICEQUALIFIER
+	  void getArg(FLOAT_T L, FLOAT_T E, FLOAT_T dmMatVac[][3], FLOAT_T arg[3], FLOAT_T phase_offset) {
+	    
+	    /* (1/2)*(1/(h_bar*c)) in units of GeV/(eV^2-km) */
+	    const FLOAT_T LoEfac = 2.534;
+
+	    for (int k=0; k<3; k++) {
+	      arg[k] = -LoEfac*dmMatVac[k][0]*L/E;
+	      if ( k==2 ) arg[k] += phase_offset ;
+	    }
+	  }
+	  
+	  /***********************************************************************
+  getC
+  
+  Transition matrix expanded as A = sum_k C_k exp(i arg_k).
+  This function returns C, whereas getArg returns arg.
+  C_{re,im} have indices [k][row][col] where k is this expansion index.
+	  ***********************************************************************/
+          template<typename FLOAT_T>
+          HOSTDEVICEQUALIFIER
+	  void getC(FLOAT_T E, FLOAT_T rho,
+		  FLOAT_T dmMatVac[][3], FLOAT_T dmMatMat[][3],
+		    const NeutrinoType antitype,  math::ComplexNumber<FLOAT_T> Cout[3][3][3], FLOAT_T phase_offset) {
+	    
+	  int n, m, i, j, k;
+	  math::ComplexNumber<FLOAT_T> product[3][3][3];
+
+	  if ( phase_offset==0.0 ) { 
+	    FLOAT_T L = NAN; // get_product doesn't use L, but the argument exists, so we pass NAN in case the implementation changes at some point so we can detect that something is wrong
+	    get_product(L, E, rho, dmMatVac, dmMatMat, antitype, product);
+	  }   
+  
+
+	  /* Compute the product with the mixing matrices */
+	  for (k=0; k<3; k++) {
+	    for (n=0; n<3; n++) {
+	      FLOAT_T RR_nk[3] = { 0., 0., 0. }; // [j]
+	      FLOAT_T RI_nk[3] = { 0., 0., 0. }; // [j]
+	      FLOAT_T IR_nk[3] = { 0., 0., 0. }; // [j]
+	      FLOAT_T II_nk[3] = { 0., 0., 0. }; // [j]
+	      for (i=0; i<3; i++) {
+		for (j=0; j<3; j++) {
+		  //RR_nk[j] += Mix_re[n][i]*product_re[i][j][k];
+		  //RI_nk[j] += Mix_re[n][i]*product_im[i][j][k];
+		  RR_nk[j] += U(n,i).re*product[i][j][k].re;
+		  RI_nk[j] += U(n,i).re*product[i][j][k].im;
+
+		  IR_nk[j] += U(n,i).im*product[i][j][k].re;
+		  II_nk[j] += U(n,i).im*product[i][j][k].im;
+		}   
+	      }   
+	      for (m=0; m<3; m++) {
+		FLOAT_T ReSum=0., ImSum=0.;
+		for (j=0; j<3; j++) {
+
+		  ReSum += RR_nk[j]*U(m,j).re;
+		  ReSum += RI_nk[j]*U(m,j).im;
+		  ReSum += IR_nk[j]*U(m,j).im;
+		  ReSum -= II_nk[j]*U(m,j).re;
+          
+		  ImSum += II_nk[j]*U(m,j).im;
+		  ImSum += IR_nk[j]*U(m,j).re;
+		  ImSum += RI_nk[j]*U(m,j).re;
+		  ImSum -= RR_nk[j]*U(m,j).im;
+		}
+		Cout[k][n][m].re=ReSum;
+		Cout[k][n][m].im=ImSum;
+	      }
+	    }
+	  }
+
+	}
 
 
-            template<typename FLOAT_T>
-            HOSTDEVICEQUALIFIER
-            void getA(const FLOAT_T L, const FLOAT_T E, const FLOAT_T rho, const FLOAT_T d_dmMatVac[][3], const FLOAT_T d_dmMatMat[][3],
-                const NeutrinoType type, math::ComplexNumber<FLOAT_T> A[3][3], const FLOAT_T phase_offset){
-
-                math::ComplexNumber<FLOAT_T> X[3][3];
-                math::ComplexNumber<FLOAT_T> product[3][3][3];
-
-                /* (1/2)*(1/(h_bar*c)) in units of GeV/(eV^2-km) */
-                const FLOAT_T LoEfac = 2.534;
-
-                if (phase_offset == 0.0) {
-		  get_product(L, E, rho, d_dmMatVac, d_dmMatMat, type, product);
-                }
-
-
-                /* Make the sum with the exponential factor in Eq. (11) */
-                //memset(X, 0, 3*3*sizeof(math::ComplexNumber<FLOAT_T>));
-                UNROLLQUALIFIER
-                for (int i=0; i<3; i++) {
-                    UNROLLQUALIFIER
-                    for (int j=0; j<3; j++) {
-                        X[i][j].re = 0;
-                        X[i][j].im = 0;
-                    }
-                }
-
-                UNROLLQUALIFIER
-                for (int k=0; k<3; k++) {
-                    const FLOAT_T arg = [&](){
-                        if( k == 2)
-                            return -LoEfac * d_dmMatVac[k][0] * L/E + phase_offset;
-                        else
-                            return -LoEfac * d_dmMatVac[k][0] * L/E;
-                    }();
-
+	  template<typename FLOAT_T>
+	  HOSTDEVICEQUALIFIER
+	  void getA(const FLOAT_T L, const FLOAT_T E, const FLOAT_T rho, const FLOAT_T d_dmMatVac[][3], const FLOAT_T d_dmMatMat[][3],
+		    const NeutrinoType type, math::ComplexNumber<FLOAT_T> A[3][3], const FLOAT_T phase_offset){
+	    
+	    math::ComplexNumber<FLOAT_T> X[3][3];
+	    math::ComplexNumber<FLOAT_T> product[3][3][3];
+	    
+	    /* (1/2)*(1/(h_bar*c)) in units of GeV/(eV^2-km) */
+	    const FLOAT_T LoEfac = 2.534;
+	    
+	    if (phase_offset == 0.0) {
+	      get_product(L, E, rho, d_dmMatVac, d_dmMatMat, type, product);
+	    }
+	    
+	    
+	    /* Make the sum with the exponential factor in Eq. (11) */
+	    //memset(X, 0, 3*3*sizeof(math::ComplexNumber<FLOAT_T>));
+	    UNROLLQUALIFIER
+	      for (int i=0; i<3; i++) {
+		UNROLLQUALIFIER
+		  for (int j=0; j<3; j++) {
+		    X[i][j].re = 0;
+		    X[i][j].im = 0;
+		  }
+	      }
+	    
+	    UNROLLQUALIFIER
+	      for (int k=0; k<3; k++) {
+		const FLOAT_T arg = [&](){
+		  if( k == 2)
+		    return -LoEfac * d_dmMatVac[k][0] * L/E + phase_offset;
+		  else
+		    return -LoEfac * d_dmMatVac[k][0] * L/E;
+		}();
+		
 #ifdef __CUDACC__
-                    FLOAT_T c,s;
-                    sincos(arg, &s, &c);
+		FLOAT_T c,s;
+		sincos(arg, &s, &c);
 #else
-                    const FLOAT_T s = sin(arg);
-                    const FLOAT_T c = cos(arg);
+		const FLOAT_T s = sin(arg);
+		const FLOAT_T c = cos(arg);
 #endif
-                    UNROLLQUALIFIER
-                    for (int i=0; i<3; i++) {
-                        UNROLLQUALIFIER
-                        for (int j=0; j<3; j++) {
+		UNROLLQUALIFIER
+		  for (int i=0; i<3; i++) {
+		    UNROLLQUALIFIER
+		      for (int j=0; j<3; j++) {
                             X[i][j].re += c*product[i][j][k].re - s*product[i][j][k].im;
                             X[i][j].im += c*product[i][j][k].im + s*product[i][j][k].re;
-                        }
-                    }
-                }
-
-                /* Eq. (10)*/
-                //memset(A, 0, 3*3*2*sizeof(FLOAT_T));
-
-                UNROLLQUALIFIER
-                for (int n=0; n<3; n++) {
-                    UNROLLQUALIFIER
-                    for (int m=0; m<3; m++) {
-                        A[n][m].re = 0;
-                        A[n][m].im = 0;
-                    }
-                }
-
-                UNROLLQUALIFIER
-                for (int n=0; n<3; n++) {
-                    UNROLLQUALIFIER
-                    for (int m=0; m<3; m++) {
-                        UNROLLQUALIFIER
-                        for (int i=0; i<3; i++) {
-                            UNROLLQUALIFIER
-                            for (int j=0; j<3; j++) {
-                                // use precomputed factors
-                                A[n][m].re +=
-                                    AXFAC(n,m,i,j,0) * X[i][j].re +
-                                    AXFAC(n,m,i,j,1) * X[i][j].im;
-                                A[n][m].im +=
-                                    AXFAC(n,m,i,j,2) * X[i][j].im +
-                                    AXFAC(n,m,i,j,3) * X[i][j].re;
-                            }
-                        }
-                    }
-                }
-            }
-
+		      }
+		  }
+	      }
+	    
+	    /* Eq. (10)*/
+	    //memset(A, 0, 3*3*2*sizeof(FLOAT_T));
+	    
+	    UNROLLQUALIFIER
+	      for (int n=0; n<3; n++) {
+		UNROLLQUALIFIER
+		  for (int m=0; m<3; m++) {
+		    A[n][m].re = 0;
+		    A[n][m].im = 0;
+		  }
+	      }
+	    
+	    UNROLLQUALIFIER
+	      for (int n=0; n<3; n++) {
+		UNROLLQUALIFIER
+		  for (int m=0; m<3; m++) {
+		    UNROLLQUALIFIER
+		      for (int i=0; i<3; i++) {
+			UNROLLQUALIFIER
+			  for (int j=0; j<3; j++) {
+			    // use precomputed factors
+			    A[n][m].re +=
+			      AXFAC(n,m,i,j,0) * X[i][j].re +
+			      AXFAC(n,m,i,j,1) * X[i][j].im;
+			    A[n][m].im +=
+			      AXFAC(n,m,i,j,2) * X[i][j].im +
+			      AXFAC(n,m,i,j,3) * X[i][j].re;
+			  }
+		      }
+		  }
+	      }
+	  }
+	  
 	  
 	  //##########################################################
 	  /*
@@ -526,13 +608,13 @@ namespace cudaprob3{
 	   */
 	  template<typename FLOAT_T>
 	  HOSTDEVICEQUALIFIER
-	  void get_transition_matrix_expansion(const NeutrinoType nutype,FLOAT_T Enu,FLOAT_T rho,FLOAT_T Len,FLOAT_T Cout_re[3][3][3],FLOAT_T Cout_im[3][3][3],FLOAT_T argout[3],FLOAT_T phase_offset)
+	  void get_transition_matrix_expansion(const NeutrinoType nutype,FLOAT_T Enu,FLOAT_T rho,FLOAT_T Len, math::ComplexNumber<FLOAT_T> Cout[3][3][3], FLOAT_T argout[3],FLOAT_T phase_offset)
 	  {
 	    FLOAT_T d_dmMatVac[3][3], d_dmMatMat[3][3];
 	    getMfast(Enu, rho, nutype, d_dmMatMat, d_dmMatVac);
 
 	    getArg(Len, Enu, d_dmMatVac, argout, phase_offset);
-	    getC(Enu, rho, d_dmMatVac, d_dmMatMat, nutype, Cout_re, Cout_im, phase_offset);
+	    getC(Enu, rho, d_dmMatVac, d_dmMatMat, nutype, Cout, phase_offset);
 	  }
 
             /*
@@ -598,157 +680,6 @@ namespace cudaprob3{
                 }
             }
 
-          template<typename FLOAT_T>
-          HOSTDEVICEQUALIFIER
-	  void Testing(FLOAT_T PathLengths[NPRODHEIGHTBINS], FLOAT_T sinarg[], FLOAT_T cosarg[], FLOAT_T darg0_dProductionHeight[3], FLOAT_T C_re[][3][3], FLOAT_T C_im[][3][3], int ieig_atm[], FLOAT_T Prob[3][3]){
-	    memset(Prob,0,sizeof(FLOAT_T)*3*3);
-
-	    std::complex<FLOAT_T> totalLenShiftFactor[3][3][3];
-
-	    /*
-	    for (int i=0;i<3;i++) {
-	      for (int j=0;j<3;j++) {
-		for (int f=0;f<3;f++) {
-		  totalLenShiftFactor = (i==j);
-		}
-	      }
-	    }
-	    for (int ih=0;ih<(NPRODHEIGHTBINS-1);ih++) {
-	      FLOAT_T h0 = PathLengths[ih];
-	      FLOAT_T h1 = PathLengths[ih+1];
-	      FLOAT_T hm = (h0+h1)/2.;
-	      FLOAT_T hw = (h1-h0);
-	      
-	      for (int i=0;i<3;i++) {
-		for (int j=0;j<3;j++) {
-		  FLOAT_T darg_dh = darg0_dProductionHeight[i]-darg0_dProductionHeight[j];
-		  std::complex<FLOAT_T> f = exp(std::complex<FLOAT_T>(0,darg_dh*hm) * sin(0.5*darg_dh*hw)/(0.5*darg_dh*hw));
-		  for (int flav=0;flav<3;flav++) {
-		    totalLenShiftFactor[i][j][flav] = f + conj(f);
-		  }
-		}
-	      }
-	    }
-	    */
-            
-	    for (int i=0;i<3;i++) {
-              for (int j=0;j<3;j++) {
-                for (int f=0;f<3;f++) {
-                  totalLenShiftFactor = 1.;
-                }
-              }
-            }
-	    
-	    for (int k=0;k<3;k++) {
-	      for (int m=0;m<3;m++) {
-		for (int n=0;n<3;n++) {
-		  Prob[n][m] = C_re[k][m][n]*C_re[k][m][n] + C_im[k][m][n]*C_im[k][m][n];
-		}
-	      }
-
-	      for (int kk=0;kk<k;kk++) {
-		std::complex<FLOAT_T> ek (cosarg[k], sinarg[k]);
-		std::complex<FLOAT_T> ekk (cosarg[kk], sinarg[kk]);
-		std::complex<FLOAT_T> phase = ek*conj(ekk);
-
-		for (int n=0;n<3;n++) {
-		  std::complex<FLOAT_T> sphase = phase*totalLenShiftFactor[ieig_atm[k]][ieig_atm[kk]][n];
-		  for (int m=0;m<3;m++) {
-		    Prob[n][m] += 2. * C_re[kk][m][n] * C_re[k][m][n] * real(sphase)
-		               +  2. * C_im[kk][m][n] * C_im[k][m][n] * real(sphase)
-		               +  2. * C_im[kk][m][n] * C_re[k][m][n] * imag(sphase)
-		               +  2. * C_im[kk][m][n] * C_im[k][m][n] * imag(sphase);
-		  }
-		}
-	      }
-	    }	    
-
-	    return;
-	  }
-
-	  /***********************************************************************
-  getArg
-  
-  Transition matrix expanded as A = sum_k C_k exp(i arg_k).
-  This function returns arg, whereas getC returns C.
-  arg has index [k], where k is this expansion index.
-	  ***********************************************************************/
-	  template<typename FLOAT_T>
-          HOSTDEVICEQUALIFIER
-	  void getArg(FLOAT_T L, FLOAT_T E, FLOAT_T dmMatVac[][3], FLOAT_T arg[3], FLOAT_T phase_offset) {
-	    
-	    /* (1/2)*(1/(h_bar*c)) in units of GeV/(eV^2-km) */
-	    const FLOAT_T LoEfac = 2.534;
-
-	    for (int k=0; k<3; k++) {
-	      arg[k] = -LoEfac*dmMatVac[k][0]*L/E;
-	      if ( k==2 ) arg[k] += phase_offset ;
-	    }
-	  }
-
-	  /***********************************************************************
-  getC
-  
-  Transition matrix expanded as A = sum_k C_k exp(i arg_k).
-  This function returns C, whereas getArg returns arg.
-  C_{re,im} have indices [k][row][col] where k is this expansion index.
-	  ***********************************************************************/
-          template<typename FLOAT_T>
-          HOSTDEVICEQUALIFIER
-	  void getC(FLOAT_T E, FLOAT_T rho,
-		  FLOAT_T dmMatVac[][3], FLOAT_T dmMatMat[][3],
-		  const NeutrinoType antitype, FLOAT_T C_re[3][3][3], FLOAT_T C_im[3][3][3], FLOAT_T phase_offset) {
-
-	  int n, m, i, j, k;
-	  math::ComplexNumber<FLOAT_T> product[3][3][3];
-
-	  if ( phase_offset==0.0 ) { 
-	    FLOAT_T L = NAN; // get_product doesn't use L, but the argument exists, so we pass NAN in case the implementation changes at some point so we can detect that something is wrong
-	    get_product(L, E, rho, dmMatVac, dmMatMat, antitype, product);
-	  }   
-  
-
-	  /* Compute the product with the mixing matrices */
-	  for (k=0; k<3; k++) {
-	    for (n=0; n<3; n++) {
-	      FLOAT_T RR_nk[3] = { 0., 0., 0. }; // [j]
-	      FLOAT_T RI_nk[3] = { 0., 0., 0. }; // [j]
-	      FLOAT_T IR_nk[3] = { 0., 0., 0. }; // [j]
-	      FLOAT_T II_nk[3] = { 0., 0., 0. }; // [j]
-	      for (i=0; i<3; i++) {
-		for (j=0; j<3; j++) {
-		  //RR_nk[j] += Mix_re[n][i]*product_re[i][j][k];
-		  //RI_nk[j] += Mix_re[n][i]*product_im[i][j][k];
-		  RR_nk[j] += U(n,i).re*product[i][j][k].re;
-		  RI_nk[j] += U(n,i).re*product[i][j][k].im;
-
-		  IR_nk[j] += U(n,i).im*product[i][j][k].re;
-		  II_nk[j] += U(n,i).im*product[i][j][k].im;
-		}   
-	      }   
-	      for (m=0; m<3; m++) {
-		FLOAT_T ReSum=0., ImSum=0.;
-		for (j=0; j<3; j++) {
-
-		  ReSum += RR_nk[j]*U(m,j).re;
-		  ReSum += RI_nk[j]*U(m,j).im;
-		  ReSum += IR_nk[j]*U(m,j).im;
-		  ReSum -= II_nk[j]*U(m,j).re;
-          
-		  ImSum += II_nk[j]*U(m,j).im;
-		  ImSum += IR_nk[j]*U(m,j).re;
-		  ImSum += RI_nk[j]*U(m,j).re;
-		  ImSum -= RR_nk[j]*U(m,j).im;
-		}
-		C_re[k][n][m]=ReSum;
-		C_im[k][n][m]=ImSum;
-	      }
-	    }
-	  }
-
-	}
-
-
 	  template<typename FLOAT_T>
 	  HOSTDEVICEQUALIFIER
 	  void calculate(NeutrinoType type,
@@ -788,15 +719,21 @@ namespace cudaprob3{
 		
 		math::ComplexNumber<FLOAT_T> TransitionMatrix[3][3];
 		math::ComplexNumber<FLOAT_T> TransitionMatrixCoreToMantle[3][3];
-		math::ComplexNumber<FLOAT_T> finalTransitionMatrix[3][3];
+		math::ComplexNumber<FLOAT_T> TransitionProduct[3][3];
 		math::ComplexNumber<FLOAT_T> TransitionTemp[3][3];
 
-		FLOAT_T ExpansionMatrix_re[3][3][3];
-		FLOAT_T ExpansionMatrix_im[3][3][3];
+		math::ComplexNumber<FLOAT_T> ExpansionMatrix[3][3][3];
 		
 		FLOAT_T arg[MAXNLAYERS][3];
 
-		//FLOAT_T darg0_dProductionHeight[3];
+		FLOAT_T darg0_dProductionHeight[3];
+
+		FLOAT_T Prob[3][3];
+
+		int ieig_atm[3];
+		ieig_atm[0] = 0;
+		ieig_atm[1] = 1;
+		ieig_atm[2] = 2;
 		
 		
 #ifndef __CUDA_ARCH__
@@ -807,16 +744,14 @@ namespace cudaprob3{
 		    
 		    const FLOAT_T energy = energylist[index_energy];
 		    
-		    const FLOAT_T ProductionHeightinCentimeter = 25000000.0;
+		    const FLOAT_T ProductionHeightinCentimeter = 25000000.0; //DB Need to calculate weighted average instead of dummy value
 
-		    /*
 		    FLOAT_T PathLengths[NPRODHEIGHTBINS];
 		    for (int ih=0;ih<NPRODHEIGHTBINS;ih++) {
 		      FLOAT_T ProdHeight = (productionHeight_bins_list[ih]+productionHeight_bins_list[ih+1])/2.0;
 		      PathLengths[ih] = sqrt((Constants<FLOAT_T>::REarthcm() + ProdHeight )*(Constants<FLOAT_T>::REarthcm() + ProdHeight)
 					     - (Constants<FLOAT_T>::REarthcm()*Constants<FLOAT_T>::REarthcm())*( 1 - cosine_zenith*cosine_zenith)) - Constants<FLOAT_T>::REarthcm()*cosine_zenith;
 		    }
-		    */
 		    
 		    const FLOAT_T PathLength = sqrt((Constants<FLOAT_T>::REarthcm() + ProductionHeightinCentimeter )*(Constants<FLOAT_T>::REarthcm() + ProductionHeightinCentimeter)
 						    - (Constants<FLOAT_T>::REarthcm()*Constants<FLOAT_T>::REarthcm())*( 1 - cosine_zenith*cosine_zenith)) - Constants<FLOAT_T>::REarthcm()*cosine_zenith;
@@ -831,7 +766,7 @@ namespace cudaprob3{
 			  }
 		      }
 
-		    for (int i=0;i<MAXNLAYERS;i++) { //Matches dimension of arg
+		    for (int i=0;i<MAXNLAYERS;i++) {
 		      for (int f=0;f<3;f++) { //Flavour
 			arg[i][f] = 0.;
 		      }
@@ -846,15 +781,21 @@ namespace cudaprob3{
 						       energy     ,                  // in GeV
 						       density,
 						       distance / Constants<FLOAT_T>::km2cm(),
-						       ExpansionMatrix_re, ExpansionMatrix_im,
-						       arg[i],
+						       ExpansionMatrix, //ComplexNumber<FLOAT_T>[3][3][3]
+						       arg[i], //FLOAT_T[3]
 						       FLOAT_T(0.0)                                          // phase offset
 						       ); 
 		      
+		      //DB For each layer, A = sum_k C[k] exp(ia[k]) .. TransitionMatrix is A, ExpansionMatrix is C[k], TransitionProduct is the product of A for each layer (Prob3++)
+
+		      clear_complex_matrix(TransitionMatrix);
+
+		      multiply_phase_matrix(arg[i],ExpansionMatrix[i],TransitionMatrix);
+
+
 		      if (i == 0){    // atmosphere
-			copy_complex_matrix( TransitionMatrix , finalTransitionMatrix );
+			copy_complex_matrix(TransitionMatrix, TransitionProduct);
 			
-			/*
 			if (distance==0) {
 			  for (int f=0;f<3;f++) {
 			    darg0_dProductionHeight[f] = 0.;
@@ -864,51 +805,131 @@ namespace cudaprob3{
 			    darg0_dProductionHeight[f] = arg[i][f]/distance;
 			  }
 			}
-			*/
-
 		      }else if(i < MaxLayer){ // not the innermost layer, can reuse current TransitionMatrix
 			clear_complex_matrix( TransitionTemp );
-			multiply_complex_matrix( TransitionMatrix, finalTransitionMatrix, TransitionTemp );
-			copy_complex_matrix( TransitionTemp, finalTransitionMatrix );
+			multiply_complex_matrix( ExpansionMatrix[i], TransitionProduct, TransitionTemp );
+			copy_complex_matrix( TransitionTemp, TransitionProduct );
 			
 			clear_complex_matrix( TransitionTemp );
-			multiply_complex_matrix( TransitionMatrixCoreToMantle, TransitionMatrix, TransitionTemp );
+			multiply_complex_matrix( TransitionMatrixCoreToMantle, ExpansionMatrix[i], TransitionTemp );
 			copy_complex_matrix( TransitionTemp, TransitionMatrixCoreToMantle );
 		      }else{ // innermost layer
 			clear_complex_matrix( TransitionTemp );
-			multiply_complex_matrix( TransitionMatrix, finalTransitionMatrix, TransitionTemp );
-			copy_complex_matrix( TransitionTemp, finalTransitionMatrix );
+			multiply_complex_matrix( ExpansionMatrix[i], TransitionProduct, TransitionTemp );
+			copy_complex_matrix( TransitionTemp, TransitionProduct );
 		      }
 		    }
 		    
 		    // calculate final transition matrix
 		    clear_complex_matrix( TransitionTemp );
-		    multiply_complex_matrix( TransitionMatrixCoreToMantle, finalTransitionMatrix, TransitionTemp );
-		    copy_complex_matrix( TransitionTemp, finalTransitionMatrix );
+		    multiply_complex_matrix( TransitionMatrixCoreToMantle, TransitionProduct, TransitionTemp );
+		    copy_complex_matrix( TransitionTemp, TransitionProduct );
+
+		    for (int i=0;i<3;i++) {
+                      for (int j=0;j<3;j++) {
+			Prob[i][j] = 0.;
+		      }
+		    }
 		    
-		    // for oscillation probabilities where the initial wave function
-		    // evaluates to 0+0i for two flavors and evaluates to 1+0i for the remaining third flavor,
-		    // we don't need to perform full matrix vector multiplication
+		    math::ComplexNumber<FLOAT_T> totalLenShiftFactor[3][3][3];
+		    //DB Set unit matrix
+		    for (int i=0;i<3;i++) {
+		      for (int j=0;j<3;j++) {
+			for (int f=0;f<3;f++) {
+			  totalLenShiftFactor[i][j][f].re = (i == j ? 1.0 : 0.0);
+			  totalLenShiftFactor[i][j][f].im = 0.;
+			}
+		      }
+		    }
+
+
+		    for (int ih=0;ih<(NPRODHEIGHTBINS-1);ih++) {
+		      FLOAT_T h0 = PathLengths[ih];
+		      FLOAT_T h1 = PathLengths[ih+1];
+		      FLOAT_T hm = (h0+h1)/2.;
+		      FLOAT_T hw = (h1-h0);
+
+		      for (int ieig0=0;ieig0<3;ieig0++) { 
+			for (int jeig0=0;jeig0<3;jeig0++) { 
+			  FLOAT_T darg_dh = darg0_dProductionHeight[ieig0]-darg0_dProductionHeight[jeig0];
+			  
+			  //DB complexVal equals exp(complex(0.,darg_dh*hm)) * sinc(0.5*darg_dh*hw)
+			  //DB totalLenShiftFactor = Prob*complexVal + Prob*conj(complexVal);
+
+			  math::ComplexNumber<FLOAT_T> f;
+			  f.re = 0.;
+			  f.im = darg_dh*hm; 
+
+			  math::ComplexNumber<FLOAT_T> exp_f;
+			  exp_f.re = exp(f.re)*cos(f.im);
+			  exp_f.im = exp(f.re)*sin(f.im);
+
+			  math::ComplexNumber<FLOAT_T> sinc_exp_f;
+			  sinc_exp_f.re = sin(0.5*darg_dh*hw)/(0.5*darg_dh*hw) * exp_f.re;
+			  sinc_exp_f.im = sin(0.5*darg_dh*hw)/(0.5*darg_dh*hw) * exp_f.im;
+
+			  for (int flav=0;flav<3;flav++) { //In flav
+			    totalLenShiftFactor[ieig0][jeig0][flav].re += sinc_exp_f.re + sinc_exp_f.re; //DB Add probability weights into here
+			    totalLenShiftFactor[ieig0][jeig0][flav].im += sinc_exp_f.im - sinc_exp_f.im; //DB Add probability weights into here
+			  }
+			}
+		      }
+		    }
+
+		    for (int k=0;k<3;k++) { //Expansion k
+		      for (int m=0;m<3;m++) { //InFlav m
+			for (int n=0;n<3;n++) { //OutFlav n
+			  Prob[n][m] += ExpansionMatrix[k][m][n].re * ExpansionMatrix[k][m][n].re + ExpansionMatrix[k][m][n].im * ExpansionMatrix[k][m][n].im;
+			}
+		      }
+
+		      for (int kk=0;kk<k;kk++) {
+			math::ComplexNumber<FLOAT_T> ek;
+			ek.re = cos(arg[0][k]); //0 as only need atmospheric layer
+			ek.im = sin(arg[0][k]); //0 as only need atmospheric layer
+
+			math::ComplexNumber<FLOAT_T> ekk;
+			ekk.re = cos(arg[0][kk]); //0 as only need atmospheric layer
+			ekk.im = sin(arg[0][kk]); //0 as only need atmospheric layer
+			
+			math::ComplexNumber<FLOAT_T> phase;
+			//phase = ek * conj(ekk)
+			phase.re = ek.re*ekk.re - ek.im*ekk.im; 
+			phase.im = ek.im*ekk.re - ek.re*ekk.im;
+
+			for (int n=0;n<3;n++) {
+			  math::ComplexNumber<FLOAT_T> sphase;
+			  //sphase = phase * totalLenShiftFactor
+			  sphase.re = phase.re*totalLenShiftFactor[ieig_atm[k]][ieig_atm[kk]][n].re - phase.im*totalLenShiftFactor[ieig_atm[k]][ieig_atm[kk]][n].im;
+			  sphase.im = phase.im*totalLenShiftFactor[ieig_atm[k]][ieig_atm[kk]][n].re - phase.re*totalLenShiftFactor[ieig_atm[k]][ieig_atm[kk]][n].im;
+
+			  for (int m=0;m<3;m++) {
+			    //sphase has path length included
+			    Prob[n][m] += 2. * ExpansionMatrix[kk][m][n].re * ExpansionMatrix[k][m][n].re * sphase.re
+			               +  2. * ExpansionMatrix[kk][m][n].im * ExpansionMatrix[k][m][n].im * sphase.re
+			               +  2. * ExpansionMatrix[kk][m][n].im * ExpansionMatrix[k][m][n].re * sphase.im
+			               -  2. * ExpansionMatrix[kk][m][n].re * ExpansionMatrix[k][m][n].im * sphase.im;
+			  }
+			}
+		      }
+		    }
+
 		    UNROLLQUALIFIER
 		      for (int inflv = 0 ; inflv < 3 ; inflv++ ){
-			UNROLLQUALIFIER
-			  for (int outflv = 0 ; outflv < 3 ; outflv++ ){
-			    const FLOAT_T re = finalTransitionMatrix[outflv][inflv].re;
-			    const FLOAT_T im = finalTransitionMatrix[outflv][inflv].im;
-			    
+                        UNROLLQUALIFIER
+                          for (int outflv = 0 ; outflv < 3 ; outflv++ ){  
 #ifdef __CUDA_ARCH__
-			    const unsigned long long resultIndex = (unsigned long long)(n_energies) * (unsigned long long)(index_cosine) + (unsigned long long)(index_energy);
-			    result[resultIndex + (unsigned long long)(n_energies) * (unsigned long long)(n_cosines) * (unsigned long long)((inflv * 3 + outflv))] = re * re + im * im;
+                            const unsigned long long resultIndex = (unsigned long long)(n_energies) * (unsigned long long)(index_cosine) + (unsigned long long)(index_energy);
+                            result[resultIndex + (unsigned long long)(n_energies) * (unsigned long long)(n_cosines) * (unsigned long long)((inflv * 3 + outflv))] = Prob[inflv][outflv];
 #else
-			    const unsigned long long resultIndex = (unsigned long long)(index_cosine) * (unsigned long long)(n_energies) * (unsigned long long)(9)
-			      + (unsigned long long)(index_energy) * (unsigned long long)(9);
-			    result[resultIndex + (unsigned long long)((inflv * 3 + outflv))] = re * re + im * im;
-#endif
-			    
+                            const unsigned long long resultIndex = (unsigned long long)(index_cosine) * (unsigned long long)(n_energies) * (unsigned long long)(9)
+                              + (unsigned long long)(index_energy) * (unsigned long long)(9);
+                            result[resultIndex + (unsigned long long)((inflv * 3 + outflv))] = Prob[inflv][outflv];
+#endif 
 			  }
 		      }
 		  }
-                }
+		}
 	      }
 	      
 	      
