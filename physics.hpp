@@ -436,10 +436,10 @@ namespace cudaprob3{
   This function returns arg, whereas getC returns C.
   arg has index [k], where k is this expansion index.
 	  ***********************************************************************/
-	  template<typename FLOAT_T>
+          template<typename FLOAT_T>
           HOSTDEVICEQUALIFIER
-	  void getArg(FLOAT_T L, FLOAT_T E, FLOAT_T dmMatVac[][3], FLOAT_T arg[3], FLOAT_T phase_offset) {
-	    
+	  void getArg(const FLOAT_T L, const FLOAT_T E, const FLOAT_T dmMatVac[][3], FLOAT_T arg[3], const FLOAT_T phase_offset) {
+
 	    /* (1/2)*(1/(h_bar*c)) in units of GeV/(eV^2-km) */
 	    const FLOAT_T LoEfac = 2.534;
 
@@ -447,7 +447,7 @@ namespace cudaprob3{
 	      arg[k] = -LoEfac*dmMatVac[k][0]*L/E;
 	      if ( k==2 ) arg[k] += phase_offset ;
 	    }
-	  }
+	  }	    
 	  
 	  /***********************************************************************
   getC
@@ -520,13 +520,12 @@ namespace cudaprob3{
 	    math::ComplexNumber<FLOAT_T> X[3][3];
 	    math::ComplexNumber<FLOAT_T> product[3][3][3];
 	    
-	    /* (1/2)*(1/(h_bar*c)) in units of GeV/(eV^2-km) */
-	    const FLOAT_T LoEfac = 2.534;
-	    
+	    FLOAT_T arg[3];
+	    getArg(L,E,d_dmMatVac,arg,phase_offset);
+
 	    if (phase_offset == 0.0) {
 	      get_product(L, E, rho, d_dmMatVac, d_dmMatMat, type, product);
 	    }
-	    
 	    
 	    /* Make the sum with the exponential factor in Eq. (11) */
 	    //memset(X, 0, 3*3*sizeof(math::ComplexNumber<FLOAT_T>));
@@ -538,22 +537,16 @@ namespace cudaprob3{
 		    X[i][j].im = 0;
 		  }
 	      }
-	    
+
 	    UNROLLQUALIFIER
 	      for (int k=0; k<3; k++) {
-		const FLOAT_T arg = [&](){
-		  if( k == 2)
-		    return -LoEfac * d_dmMatVac[k][0] * L/E + phase_offset;
-		  else
-		    return -LoEfac * d_dmMatVac[k][0] * L/E;
-		}();
 		
 #ifdef __CUDACC__
 		FLOAT_T c,s;
-		sincos(arg, &s, &c);
+		sincos(arg[k], &s, &c);
 #else
-		const FLOAT_T s = sin(arg);
-		const FLOAT_T c = cos(arg);
+		const FLOAT_T s = sin(arg[k]);
+		const FLOAT_T c = cos(arg[k]);
 #endif
 		UNROLLQUALIFIER
 		  for (int i=0; i<3; i++) {
@@ -613,7 +606,7 @@ namespace cudaprob3{
 	    FLOAT_T d_dmMatVac[3][3], d_dmMatMat[3][3];
 	    getMfast(Enu, rho, nutype, d_dmMatMat, d_dmMatVac);
 
-	    getArg(Len, Enu, d_dmMatVac, argout, phase_offset);
+	    //getArg(Len, Enu, d_dmMatVac, argout, phase_offset);
 	    getC(Enu, rho, d_dmMatVac, d_dmMatMat, nutype, Cout, phase_offset);
 	  }
 
@@ -725,7 +718,7 @@ namespace cudaprob3{
 		math::ComplexNumber<FLOAT_T> TransitionTemp[3][3];
 
 		math::ComplexNumber<FLOAT_T> ExpansionMatrix[3][3][3];
-		FLOAT_T arg[MAXNLAYERS][3];
+		FLOAT_T arg[3];
 		
 #ifndef __CUDA_ARCH__
 		for(int index_energy = 0; index_energy < n_energies; index_energy += 1){
@@ -751,10 +744,8 @@ namespace cudaprob3{
 			  }
 		      }
 
-		    for (int i=0;i<MAXNLAYERS;i++) {
-		      for (int f=0;f<3;f++) { //Flavour
-			arg[i][f] = 0.;
-		      }
+		    for (int f=0;f<3;f++) { //Flavour
+		      arg[f] = 0.;
 		    }
 		    
 		    // loop from vacuum layer to innermost crossed layer
@@ -762,7 +753,7 @@ namespace cudaprob3{
 		      const FLOAT_T distance = getTraversedDistanceOfLayer(radii, i, MaxLayer, PathLength, TotalEarthLength, cosine_zenith);
 		      const FLOAT_T density = getDensityOfLayer(rhos, yps, i, MaxLayer);
 		     
-		      //DB For each layer, A = sum_k C[k] exp(ia[k]) .. TransitionMatrix is A, ExpansionMatrix is C[k], TransitionProduct is the product of A for each layer (Prob3++)
+		      //DB For each layer, A = sum_k C[k] exp(i a[k]) .. TransitionMatrix is A, ExpansionMatrix is C[k], TransitionProduct is the product of A for each layer (Prob3++)
 
 		      //A = 0
 		      clear_complex_matrix(TransitionMatrix);
@@ -781,7 +772,7 @@ namespace cudaprob3{
 						       density,
 						       distance / Constants<FLOAT_T>::km2cm(),
 						       ExpansionMatrix, //ComplexNumber<FLOAT_T>[3][3][3]
-						       arg[i], //FLOAT_T[3]
+						       arg, //FLOAT_T[3]
 						       FLOAT_T(0.0)                                          // phase offset
 						       ); 
 		     
@@ -791,6 +782,7 @@ namespace cudaprob3{
 			multiply_phase_matrix(arg[i],ExpansionMatrix[q],TransitionMatrix);
 		      }
 
+		      /*
 		      for (int q=0;q<3;q++) {
 			for (int j=0;j<3;j++) {
 			  if ( fabs(TransitionMatrix[q][j].re - TransitionMatrix_Old[q][j].re)>1e-6 || fabs(TransitionMatrix[q][j].im - TransitionMatrix_Old[q][j].im)>1e-6 ) {
@@ -802,6 +794,7 @@ namespace cudaprob3{
 			  }
 			}
 		      }
+		      */
 
 		      if (i == 0){    // atmosphere
 			copy_complex_matrix(TransitionMatrix_Old, TransitionProduct);
