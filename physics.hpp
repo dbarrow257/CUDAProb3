@@ -458,48 +458,54 @@ namespace cudaprob3{
 	  ***********************************************************************/
           template<typename FLOAT_T>
           HOSTDEVICEQUALIFIER
-          void getC(FLOAT_T E, FLOAT_T rho, FLOAT_T d_dmMatVac[][3], FLOAT_T d_dmMatMat[][3],
-                    NeutrinoType type, FLOAT_T phase_offset, math::ComplexNumber<FLOAT_T> C[3][3][3]){
-
-	    math::ComplexNumber<FLOAT_T> product[3][3][3];
+          void getC(FLOAT_T E, FLOAT_T rho, FLOAT_T dmMatVac[][3], FLOAT_T dmMatMat[][3],
+		    cudaprob3::NeutrinoType type, math::ComplexNumber<FLOAT_T> C[3][3][3], FLOAT_T phase_offset) {
+		    
+	    const int nExp = 3;
+	    const int nNuFlav = 3;
+	  
+	    math::ComplexNumber<FLOAT_T> product[nNuFlav][nNuFlav][nExp];
 
             if (phase_offset == 0.0) {
 	      FLOAT_T L = NAN;
-              get_product(L, E, rho, d_dmMatVac, d_dmMatMat, type, product);
+              get_product(L, E, rho, dmMatVac, dmMatMat, type, product);
             }
 
             /* Compute the product with the mixing matrices */
-            for (int k=0; k<3; k++) {
-              for (int n=0; n<3; n++) {
-                FLOAT_T RR_nk[3] = { 0., 0., 0. }; // [j]
-                FLOAT_T RI_nk[3] = { 0., 0., 0. }; // [j]
-                FLOAT_T IR_nk[3] = { 0., 0., 0. }; // [j]
-                FLOAT_T II_nk[3] = { 0., 0., 0. }; // [j]
-                for (int i=0; i<3; i++) {
-                  for (int j=0; j<3; j++) {
-                    RR_nk[j] += U(n,i).re * product[k][i][j].re;
-                    RI_nk[j] += U(n,i).re * product[k][i][j].im;
-                    IR_nk[j] += U(n,i).im * product[k][i][j].re;
-                    II_nk[j] += U(n,i).im * product[k][i][j].im;
+            for (int iExp=0;iExp<nNuFlav;iExp++) {
+              for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
+
+                FLOAT_T RR_nk[nNuFlav] = { 0., 0., 0. };
+                FLOAT_T RI_nk[nNuFlav] = { 0., 0., 0. };
+                FLOAT_T IR_nk[nNuFlav] = { 0., 0., 0. };
+                FLOAT_T II_nk[nNuFlav] = { 0., 0., 0. };
+
+                for (int i=0; i<nNuFlav; i++) {
+                  for (int j=0; j<nNuFlav; j++) {
+                    RR_nk[j] += U(iNuFlav,i).re * product[iNuFlav][j][iExp].re;
+                    RI_nk[j] += U(iNuFlav,i).re * product[iNuFlav][j][iExp].im;
+                    IR_nk[j] += U(iNuFlav,i).im * product[iNuFlav][j][iExp].re;
+                    II_nk[j] += U(iNuFlav,i).im * product[iNuFlav][j][iExp].im;
                   }
                 }
-                for (int m=0; m<3; m++) {
+
+                for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++) {
                   FLOAT_T ReSum=0., ImSum=0.;
-                  for (int j=0; j<3; j++) {
-                    ReSum += RR_nk[j] * U(m,j).re;
-                    ReSum += RI_nk[j] * U(m,j).im;
-                    ReSum += IR_nk[j] * U(m,j).im;
-                    ReSum -= II_nk[j] * U(m,j).re;
 
-                    ImSum += II_nk[j] * U(m,j).im;
-                    ImSum += IR_nk[j] * U(m,j).im;
-                    ImSum += RI_nk[j] * U(m,j).re;
-                    ImSum -= RR_nk[j] * U(m,j).im;
+                  for (int j=0; j<nNuFlav; j++) {
+                    ReSum += RR_nk[j] * U(jNuFlav,j).re;
+                    ReSum += RI_nk[j] * U(jNuFlav,j).im;
+                    ReSum += IR_nk[j] * U(jNuFlav,j).im;
+                    ReSum -= II_nk[j] * U(jNuFlav,j).re;
 
+                    ImSum += II_nk[j] * U(jNuFlav,j).im;
+                    ImSum += IR_nk[j] * U(jNuFlav,j).im;
+                    ImSum += RI_nk[j] * U(jNuFlav,j).re;
+                    ImSum -= RR_nk[j] * U(jNuFlav,j).im;
                   }
 
-                  C[k][n][m].re = ReSum;
-                  C[k][n][m].im = ImSum;
+                  C[iExp][iNuFlav][jNuFlav].re = ReSum;
+                  C[iExp][iNuFlav][jNuFlav].im = ImSum;
 
                 }
               }
@@ -522,7 +528,7 @@ namespace cudaprob3{
 	    math::ComplexNumber<FLOAT_T> X[3][3];
 	    clear_complex_matrix(X);
 	    multiply_phase_matrix(Arg, product, X);
-
+	    
 	    clear_complex_matrix(A);
 
 	    //DB Think AXFAC(incoming nu flav, outgoing nu flav, row, column, part)
@@ -549,55 +555,6 @@ namespace cudaprob3{
 
 	  }
 
-          template<typename FLOAT_T>
-          HOSTDEVICEQUALIFIER
-          void getC_Alt(FLOAT_T E, FLOAT_T rho, FLOAT_T d_dmMatVac[][3], FLOAT_T d_dmMatMat[][3],NeutrinoType type, FLOAT_T phase_offset, math::ComplexNumber<FLOAT_T> C[3][3][3]) {
-
-	    math::ComplexNumber<FLOAT_T> product[3][3][3];
-
-            if (phase_offset == 0.0) {
-              FLOAT_T L = NAN;
-              get_product(L, E, rho, d_dmMatVac, d_dmMatMat, type, product);
-            }
-
-	    for (int k=0;k<3;k++) {
-	      clear_complex_matrix(C[k]);
-	    }
-
-            //DB Think AXFAC(incoming nu flav, outgoing nu flav, row, column, part)                                                                                                                         
-            UNROLLQUALIFIER
-	      for (int k=0;k<3;k++) {
-		UNROLLQUALIFIER
-		  for (int n=0; n<3; n++) {
-		    UNROLLQUALIFIER
-		      for (int m=0; m<3; m++) {
-			UNROLLQUALIFIER
-			  for (int i=0; i<3; i++) {
-			    UNROLLQUALIFIER
-			      for (int j=0; j<3; j++) {
-				// use precomputed factors                                                                                                                                                      
-				C[k][n][m].re +=
-				  AXFAC(n,m,i,j,0) * product[k][i][j].re +
-				  AXFAC(n,m,i,j,1) * product[k][i][j].im;
-				C[k][n][m].im +=
-				  AXFAC(n,m,i,j,2) * product[k][i][j].im +
-				  AXFAC(n,m,i,j,3) * product[k][i][j].re;
-
-				/*
-				C[k][n][m].re +=
-				  AXFAC(n,m,i,j,0) * product[i][j][k].re +
-				  AXFAC(n,m,i,j,1) * product[i][j][k].im;
-				C[k][n][m].im +=
-				  AXFAC(n,m,i,j,2) * product[i][j][k].im +
-				  AXFAC(n,m,i,j,3) * product[i][j][k].re;
-				*/
-			      }
-			  }
-		      }
-		  }
-	      }
-          }
-	  
 	  //##########################################################
 	  /*
 	   *   Obtain transition matrix expanded as A = sum_k C_k exp(i arg_k).
@@ -613,8 +570,7 @@ namespace cudaprob3{
 	    getMfast(Enu, rho, nutype, d_dmMatMat, d_dmMatVac);
 	    
 	    getArg(Len, Enu, d_dmMatVac, Arg, phase_offset);
-	    //getC_Alt(Enu, rho, d_dmMatVac, d_dmMatMat, nutype, phase_offset, Cout);
-	    getC(Enu, rho, d_dmMatVac, d_dmMatMat, nutype, phase_offset, Cout);
+	    getC(Enu, rho, d_dmMatVac, d_dmMatMat, nutype, Cout, phase_offset);
 	  }
 	  
 	  /*
@@ -716,18 +672,29 @@ namespace cudaprob3{
 		
 		const FLOAT_T TotalEarthLength =  -2.0*cosine_zenith*Constants<FLOAT_T>::REarthcm(); // in [cm]
 		const int MaxLayer = maxlayers[index_cosine];
-		
-		math::ComplexNumber<FLOAT_T> TransitionMatrix[3][3];
-		math::ComplexNumber<FLOAT_T> TransitionMatrix_Old[3][3];
 
-		math::ComplexNumber<FLOAT_T> TransitionMatrixCoreToMantle[3][3];
-		math::ComplexNumber<FLOAT_T> TransitionProduct[3][3];
-		math::ComplexNumber<FLOAT_T> TransitionTemp[3][3];
+		const int nExp = 3;
+		const int nNuFlav = 3;
+		const int nMaxLayers = 8;
 
-		math::ComplexNumber<FLOAT_T> ExpansionMatrix[3][3][3];
+		FLOAT_T phaseOffset = 0.;
 
-		FLOAT_T arg[3];
-		FLOAT_T arg_old[3];
+		if (MaxLayer > nMaxLayers) {
+		  printf("Error: MaxLayer=%d given by nMaxLayers=%d. Please increase nMaxLayers in physics.cc:%d\n", MaxLayer, nMaxLayers, __LINE__);
+		  std::exit(-1);
+		}
+
+		FLOAT_T PathLengths[nMaxLayers];
+
+		math::ComplexNumber<FLOAT_T> TransitionMatrix[nNuFlav][nNuFlav];
+		math::ComplexNumber<FLOAT_T> TransitionProduct[nMaxLayers][nNuFlav][nNuFlav];
+
+		math::ComplexNumber<FLOAT_T> ExpansionMatrix[nMaxLayers][nNuFlav][nNuFlav][nNuFlav];
+		FLOAT_T arg[nMaxLayers][nNuFlav];
+		FLOAT_T darg0_dProductionHeight[nNuFlav];
+		math::ComplexNumber<FLOAT_T> totalLenShiftFactor[nNuFlav][nNuFlav][nExp];
+
+		FLOAT_T Prob[nNuFlav][nNuFlav];
 		
 #ifndef __CUDA_ARCH__
 		for(int index_energy = 0; index_energy < n_energies; index_energy += 1){
@@ -736,155 +703,194 @@ namespace cudaprob3{
 #endif
 
 		    const FLOAT_T energy = energylist[index_energy];
+		    		    
+		    //============================================================================================================
+		    //DB Reset all the values
 
-		    const FLOAT_T ProductionHeightinCentimeter = 2500000.0; //DB 25km in cm - Need to calculate weighted average instead of dummy value
-
-		    //PathLength is used to calculate the distance traversed
-		    const FLOAT_T PathLength = sqrt((Constants<FLOAT_T>::REarthcm() + ProductionHeightinCentimeter )*(Constants<FLOAT_T>::REarthcm() + ProductionHeightinCentimeter)
-						    - (Constants<FLOAT_T>::REarthcm()*Constants<FLOAT_T>::REarthcm())*( 1 - cosine_zenith*cosine_zenith)) - Constants<FLOAT_T>::REarthcm()*cosine_zenith;
-		    
-		    // set TransitionMatrixCoreToMantle to unit matrix
-		    UNROLLQUALIFIER
-		      for(int i = 0; i < 3; i++){
-			UNROLLQUALIFIER
-			  for(int j = 0; j < 3; j++){
-			    TransitionMatrixCoreToMantle[i][j].re = (i == j ? 1.0 : 0.0);
-			    TransitionMatrixCoreToMantle[i][j].im = 0.0;
-			  }
+		    for (int iLayer=0;iLayer<nMaxLayers;iLayer++) {
+		      for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
+			clear_complex_matrix(ExpansionMatrix[iLayer][iNuFlav]);
 		      }
+		    }
+		    clear_complex_matrix(TransitionMatrix);
 
-		    for (int f=0;f<3;f++) { //Flavour
-		      arg[f] = 0.;
-		      arg_old[f] = 0.;
+		    for (int iLayer=0;iLayer<nMaxLayers;iLayer++) {
+		      for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
+			arg[iLayer][iNuFlav] = 0.;
+		      }
 		    }
 		    
+		    for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
+		      for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++) {
+			Prob[iNuFlav][jNuFlav] = 0.;
+		      }
+		    }
+
+		    for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
+		      darg0_dProductionHeight[iNuFlav] = 0.;
+		    }
+
+		    //============================================================================================================
+		    //DB Calculate Path Lengths for given production heights
+
+		    for (int iLayer=0;iLayer<nMaxLayers;iLayer++) {
+		      FLOAT_T ProdHeight = (productionHeight_bins_list[iLayer]+productionHeight_bins_list[iLayer+1])/2.0;
+		      PathLengths[iLayer] = sqrt((Constants<FLOAT_T>::REarthcm() + ProdHeight )*(Constants<FLOAT_T>::REarthcm() + ProdHeight)
+					     - (Constants<FLOAT_T>::REarthcm()*Constants<FLOAT_T>::REarthcm())*( 1 - cosine_zenith*cosine_zenith)) - Constants<FLOAT_T>::REarthcm()*cosine_zenith;
+		    }
+
+		    const FLOAT_T ProductionHeightinCentimeter = 2500000.0; //DB 25km in cm - Need to calculate weighted average instead of dummy value		    
+
+		    //DB PathLength is used to calculate the distance traversed
+		    const FLOAT_T PathLength = sqrt((Constants<FLOAT_T>::REarthcm() + ProductionHeightinCentimeter )*(Constants<FLOAT_T>::REarthcm() + ProductionHeightinCentimeter)
+						    - (Constants<FLOAT_T>::REarthcm()*Constants<FLOAT_T>::REarthcm())*( 1 - cosine_zenith*cosine_zenith)) - Constants<FLOAT_T>::REarthcm()*cosine_zenith;
+
+		    //DB Set unit matrix
+		    for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
+		      for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++) {
+			for (int iExp=0;iExp<nExp;iExp++) {
+			  totalLenShiftFactor[iNuFlav][jNuFlav][iExp].re = (iNuFlav == jNuFlav ? 1.0 : 0.0);
+			  totalLenShiftFactor[iNuFlav][jNuFlav][iExp].im = 0.;
+			}
+		      }
+		    }
+
+
+		    //============================================================================================================
+		    //DB Loop over layers		    
+
 		    // loop from vacuum layer to innermost crossed layer
-		    for (int i = 0; i <= MaxLayer ; i++ ){
-		      const FLOAT_T distance = getTraversedDistanceOfLayer(radii, i, MaxLayer, PathLength, TotalEarthLength, cosine_zenith);
-		      const FLOAT_T density = getDensityOfLayer(rhos, yps, i, MaxLayer);
-		     
+		    for (int iLayer=0;iLayer<=MaxLayer;iLayer++){
+		      const FLOAT_T distance = getTraversedDistanceOfLayer(radii, iLayer, MaxLayer, PathLength, TotalEarthLength, cosine_zenith);
+		      const FLOAT_T density = getDensityOfLayer(rhos, yps, iLayer, MaxLayer);
+		      
+		      get_transition_matrix_expansion(type,
+						      energy,
+						      density,
+						      distance / Constants<FLOAT_T>::km2cm(),
+						      ExpansionMatrix[iLayer],
+						      arg[iLayer],
+						      phaseOffset
+						      ); 
+		
 		      //DB For each layer, A = sum_k C[k] exp(i a[k]) .. TransitionMatrix is A, ExpansionMatrix is C[k], TransitionProduct is the product of A for each layer (Prob3++)
-
-		      //A = 0
 		      clear_complex_matrix(TransitionMatrix);
-		      clear_complex_matrix(TransitionMatrix_Old);
+		      for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
+			multiply_phase_matrix(arg[iLayer][iNuFlav],ExpansionMatrix[iLayer][iNuFlav],TransitionMatrix);
+		      }
 
-		      get_transition_matrix( type,
-					     energy,   // in GeV
-					     density,
-					     distance / Constants<FLOAT_T>::km2cm(),
-					     TransitionMatrix_Old,   // Output transition matrix
-					     arg_old,
-					     FLOAT_T(0.0)     // phase offset
-					     );
- 
-		      get_transition_matrix_expansion( type,
-						       energy     ,                  // in GeV
-						       density,
-						       distance / Constants<FLOAT_T>::km2cm(),
-						       ExpansionMatrix, //ComplexNumber<FLOAT_T>[3][3][3]
-						       arg, //FLOAT_T[3]
-						       FLOAT_T(0.0)                                          // phase offset
-						       ); 
-		     		      
-		      //Transition Matrix += exp(i arg) * ExpansionMatrix[exp]
-		      multiply_phase_matrix(arg,ExpansionMatrix,TransitionMatrix);
+		      clear_complex_matrix(TransitionProduct[iLayer]);
+		      if (iLayer == 0){    // atmosphere
+			copy_complex_matrix(TransitionMatrix, TransitionProduct[iLayer]);
 
-		      for (int q=0;q<3;q++) {
-			for (int j=0;j<3;j++) {
-			  if ( fabs(TransitionMatrix[q][j].re - TransitionMatrix_Old[q][j].re)>1e-6 || fabs(TransitionMatrix[q][j].im - TransitionMatrix_Old[q][j].im)>1e-6 ) {
-			    printf("TransitionMatrix[q][j].re: %4.2f \n",TransitionMatrix[q][j].re);
-			    printf("TransitionMatrix[q][j].im: %4.2f \n",TransitionMatrix[q][j].im);
-			    printf("TransitionMatrix_Old[q][j].re: %4.2f \n",TransitionMatrix_Old[q][j].re);
-			    printf("TransitionMatrix_Old[q][j].im: %4.2f \n",TransitionMatrix_Old[q][j].im);
+			if (distance==0.) {
+			  for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
+			    darg0_dProductionHeight[iNuFlav] = 0.;
+			  }
+			}
+			else {
+			  for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
+			    darg0_dProductionHeight[iNuFlav] = arg[iLayer][iNuFlav]/distance;
+			  }
+			}
 
-			    std::cout << "------------ Arg[i] -------------" << std::endl;
-			    for (int i=0;i<3;i++) {
-			      std::cout << "arg[" << i << "]:" << arg[i] << std::endl;
-			    }
+		      } else {
+			//DB TransitionProduct[iLayer] = TransitionMatrix * TransitionProduct[iLayer-1] 
+			multiply_complex_matrix(TransitionMatrix,TransitionProduct[iLayer-1],TransitionProduct[iLayer]);
+		      }
+		    }
 
-			    std::cout << "------------ Arg_Old[i] -------------" << std::endl;
-			    for (int i=0;i<3;i++) {
-			      std::cout << "arg_Old[" << i << "]:" << arg_old[i] << std::endl;
-			    }
+		    //============================================================================================================
+		    //DB Calculate totalLenShiftFactors using atmospheric layer
+		    
+		    for (int iLayer=0;iLayer<(nMaxLayers-1);iLayer++) {
+		      FLOAT_T h0 = PathLengths[iLayer];
+		      FLOAT_T h1 = PathLengths[iLayer+1];
+		      FLOAT_T hm = (h0+h1)/2.;
+		      FLOAT_T hw = (h1-h0);
 
-			    std::cout << "------------ ExpansionMatrix[k,i,j] -------------" << std::endl;
-			    for (int k=0;k<3;k++) {
-			      for (int i=0;i<3;i++) {
-				for (int j=0;j<3;j++) {
-				  std::cout << "ExpansionMatrix[" << k << "," << i << "," << j << "].re:" << ExpansionMatrix[k][i][j].re << std::endl;
-				  std::cout << "ExpansionMatrix[" << k << "," << i << "," << j << "].im:" << ExpansionMatrix[k][i][j].im << std::endl;
-				}
-			      }
-			    }
+		      for (int ieig0=0;ieig0<nNuFlav;ieig0++) { 
+			for (int jeig0=0;jeig0<nNuFlav;jeig0++) { 
+			  FLOAT_T darg_dh = darg0_dProductionHeight[ieig0]-darg0_dProductionHeight[jeig0];
 
-			    std::cout << "------------ TransitionMatrix[i,j] -------------" << std::endl;
-			    for (int i=0;i<3;i++) {
-			      for (int j=0;j<3;j++) {
+			  math::ComplexNumber<FLOAT_T> f;
+			  f.re = 0.;
+			  f.im = darg_dh*hm; 
 
-				if (fabs(TransitionMatrix[i][j].re) < 1e-9) {
-				  std::cout << "TransitionMatrix[" << i << "," << j << "].re:" << 0 << std::endl;
-				} else {
-				  std::cout << "TransitionMatrix[" << i << "," << j << "].re:" << TransitionMatrix[i][j].re << std::endl;
-				}
+			  math::ComplexNumber<FLOAT_T> exp_f;
+			  exp_f.re = exp(f.re)*cos(f.im);
+			  exp_f.im = exp(f.re)*sin(f.im);
 
-				if (fabs(TransitionMatrix[i][j].im) < 1e-9) {
-				  std::cout << "TransitionMatrix[" << i << "," << j << "].im:" << 0 << std::endl;
-				} else {
-				  std::cout << "TransitionMatrix[" << i << "," << j << "].im:" << TransitionMatrix[i][j].im << std::endl;
-				}
-			      }
-			    }
+			  math::ComplexNumber<FLOAT_T> sinc_exp_f;
+			  sinc_exp_f.re = sin(0.5*darg_dh*hw)/(0.5*darg_dh*hw) * exp_f.re;
+			  sinc_exp_f.im = sin(0.5*darg_dh*hw)/(0.5*darg_dh*hw) * exp_f.im;
 
-			    std::cout << "------------ TransitionMatrix_Old[i,j] -------------" << std::endl;
-			    for (int i=0;i<3;i++) {
-			      for (int j=0;j<3;j++) {
-				std::cout << "TransitionMatrix_Old[" << i << "," << j << "].re:" << TransitionMatrix_Old[i][j].re << std::endl;
-				std::cout << "TransitionMatrix_Old[" << i << "," << j << "].im:" << TransitionMatrix_Old[i][j].im << std::endl;
-			      }
-			    }
-
-			    exit(-1);
+			  for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) { //In flav
+			    totalLenShiftFactor[ieig0][jeig0][iNuFlav].re += sinc_exp_f.re + sinc_exp_f.re; //DB Add probability weights into here
+			    totalLenShiftFactor[ieig0][jeig0][iNuFlav].im += sinc_exp_f.im - sinc_exp_f.im; //DB Add probability weights into here
 			  }
 			}
 		      }
+		    }
 
-		      if (i == 0){    // atmosphere
-			copy_complex_matrix(TransitionMatrix_Old, TransitionProduct);
-		      }else if(i < MaxLayer){ // not the innermost layer, can reuse current TransitionMatrix
-			clear_complex_matrix(TransitionTemp);
-			multiply_complex_matrix(TransitionMatrix_Old, TransitionProduct, TransitionTemp);
-			copy_complex_matrix(TransitionTemp, TransitionProduct);
-			
-			clear_complex_matrix(TransitionTemp);
-			multiply_complex_matrix(TransitionMatrixCoreToMantle, TransitionMatrix_Old, TransitionTemp);
-			copy_complex_matrix(TransitionTemp, TransitionMatrixCoreToMantle);
-		      }else{ // innermost layer
-			clear_complex_matrix(TransitionTemp);
-			multiply_complex_matrix(TransitionMatrix_Old, TransitionProduct, TransitionTemp);
-			copy_complex_matrix(TransitionTemp, TransitionProduct);
+		    //============================================================================================================
+		    //DB Calculate Probability from TransitionProduct
+		    
+		    for (int iExp=0;iExp<nExp;iExp++) {
+		      for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) { //Flavour after osc
+			for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++) { //Flavour before osc
+			  Prob[jNuFlav][iNuFlav] = TransitionProduct[iExp][iNuFlav][jNuFlav].re*TransitionProduct[iExp][iNuFlav][jNuFlav].re+TransitionProduct[iExp][iNuFlav][jNuFlav].im*TransitionProduct[iExp][iNuFlav][jNuFlav].im;
+			}
+		      }
+		      
+		      for (int jExp=0;jExp<iExp;jExp++) { //Expansion * Expansion terms
+
+			//DB 0s for Atmospheric layer?
+			math::ComplexNumber<FLOAT_T> expon_arg_iExp;
+			expon_arg_iExp.re = cos(arg[0][iExp]);
+			expon_arg_iExp.im = sin(arg[0][iExp]);
+
+			//DB 0s for Atmospheric later?
+			math::ComplexNumber<FLOAT_T> expon_arg_jExp;
+			expon_arg_jExp.re = cos(arg[0][jExp]);
+			expon_arg_jExp.im = sin(arg[0][jExp]);
+
+			//DB Phase = expon_arg_iExp * conj(expon_arg_jExp)
+			math::ComplexNumber<FLOAT_T> Phase;		       
+			Phase.re = expon_arg_iExp.re * expon_arg_jExp.re - expon_arg_iExp.im * expon_arg_jExp.im;
+			Phase.im = expon_arg_iExp.im * expon_arg_jExp.re + expon_arg_iExp.re * expon_arg_jExp.im;
+
+			for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++) { //Flavour before osc
+
+			  //DB SPhase = Phase * totalLenShiftFactor[iExp][jExp][jNuFlav] (Both complex numbers)
+			  math::ComplexNumber<FLOAT_T> SPhase;
+			  SPhase.re = Phase.re * totalLenShiftFactor[iExp][jExp][jNuFlav].re - Phase.im * totalLenShiftFactor[iExp][jExp][jNuFlav].re;
+			  SPhase.im = Phase.im * totalLenShiftFactor[iExp][jExp][jNuFlav].re + Phase.re * totalLenShiftFactor[iExp][jExp][jNuFlav].im;
+
+			  for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) { //Flavour after osc
+			    Prob[jNuFlav][iNuFlav] +=  2. * TransitionProduct[jExp][iNuFlav][jNuFlav].re * TransitionProduct[iExp][iNuFlav][jNuFlav].re * SPhase.re
+			                            +  2. * TransitionProduct[jExp][iNuFlav][jNuFlav].im * TransitionProduct[iExp][iNuFlav][jNuFlav].im * SPhase.re
+			                            +  2. * TransitionProduct[jExp][iNuFlav][jNuFlav].im * TransitionProduct[iExp][iNuFlav][jNuFlav].re * SPhase.im
+			                            -  2. * TransitionProduct[jExp][iNuFlav][jNuFlav].re * TransitionProduct[iExp][iNuFlav][jNuFlav].im * SPhase.im;
+			  }
+			}
 		      }
 		    }
-		    
-		    // calculate final transition matrix
-		    clear_complex_matrix(TransitionTemp);
-		    multiply_complex_matrix(TransitionMatrixCoreToMantle, TransitionProduct, TransitionTemp);
-		    copy_complex_matrix(TransitionTemp, TransitionProduct);
+
+		    //============================================================================================================
+		    //DB Fill Arrays
 
 		    UNROLLQUALIFIER
-		      for (int inflv = 0 ; inflv < 3 ; inflv++ ){
+		      for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++){ //Flavour before osc
                         UNROLLQUALIFIER
-                          for (int outflv = 0 ; outflv < 3 ; outflv++ ){  
-			    const FLOAT_T re = TransitionProduct[outflv][inflv].re;
-			    const FLOAT_T im = TransitionProduct[outflv][inflv].im;
-
+                          for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++){  //Flavour after osc
 #ifdef __CUDA_ARCH__
 			    const unsigned long long resultIndex = (unsigned long long)(n_energies) * (unsigned long long)(index_cosine) + (unsigned long long)(index_energy);
-			    result[resultIndex + (unsigned long long)(n_energies) * (unsigned long long)(n_cosines) * (unsigned long long)((inflv * 3 + outflv))] = re * re + im * im;
+			    result[resultIndex + (unsigned long long)(n_energies) * (unsigned long long)(n_cosines) * (unsigned long long)((iNuFlav * nNuFlav + jNuFlav))] = Prob[iNuFlav][jNuFlav];
 #else
 			    const unsigned long long resultIndex = (unsigned long long)(index_cosine) * (unsigned long long)(n_energies) * (unsigned long long)(9)
 			      + (unsigned long long)(index_energy) * (unsigned long long)(9);
-			    result[resultIndex + (unsigned long long)((inflv * 3 + outflv))] = re * re + im * im;
+			    result[resultIndex + (unsigned long long)((iNuFlav * nNuFlav + jNuFlav))] = Prob[iNuFlav][jNuFlav];
 #endif
 			  }
 		      }
