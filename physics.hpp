@@ -515,8 +515,10 @@ namespace cudaprob3{
 
 	  template<typename FLOAT_T>
 	  HOSTDEVICEQUALIFIER
-          void getA(FLOAT_T E, FLOAT_T rho, FLOAT_T d_dmMatVac[][3], FLOAT_T d_dmMatMat[][3],NeutrinoType type, FLOAT_T phase_offset, FLOAT_T Arg[3], math::ComplexNumber<FLOAT_T> A[3][3]) {
+          void getA(FLOAT_T L, FLOAT_T E, FLOAT_T rho, FLOAT_T d_dmMatVac[][3], FLOAT_T d_dmMatMat[][3],NeutrinoType type, FLOAT_T phase_offset, FLOAT_T Arg[3], math::ComplexNumber<FLOAT_T> A[3][3]) {
 
+	    /* (1/2)*(1/(h_bar*c)) in units of GeV/(eV^2-km) */
+	    const FLOAT_T LoEfac = 2.534;
 	    
 	    math::ComplexNumber<FLOAT_T> product[3][3][3];
 
@@ -526,11 +528,45 @@ namespace cudaprob3{
 	    }
 
 	    math::ComplexNumber<FLOAT_T> X[3][3];
-	    clear_complex_matrix(X);
 
-	    for (int i=0;i<3;i++) {
-	      multiply_phase_matrix(Arg[i], product[i], X);
-	    }
+	    /* Make the sum with the exponential factor in Eq. (11) */
+	    //memset(X, 0, 3*3*sizeof(math::ComplexNumber<FLOAT_T>));
+	    UNROLLQUALIFIER
+	      for (int i=0; i<3; i++) {
+		UNROLLQUALIFIER
+		  for (int j=0; j<3; j++) {
+		    X[i][j].re = 0;
+		    X[i][j].im = 0;
+		  }
+	      }
+	    
+	    
+	    UNROLLQUALIFIER
+	      for (int k=0; k<3; k++) {
+		const FLOAT_T arg = [&](){
+		  if( k == 2)
+		    return -LoEfac * d_dmMatVac[k][0] * L/E + phase_offset;
+		  else
+		    return -LoEfac * d_dmMatVac[k][0] * L/E;
+		}();
+		
+		
+#ifdef __CUDACC__
+		FLOAT_T c,s;
+		sincos(arg, &s, &c);
+#else
+		const FLOAT_T s = sin(arg);
+		const FLOAT_T c = cos(arg);
+#endif
+		UNROLLQUALIFIER
+		  for (int i=0; i<3; i++) {
+		    UNROLLQUALIFIER
+		      for (int j=0; j<3; j++) {
+			X[i][j].re += c*product[i][j][k].re - s*product[i][j][k].im;
+			X[i][j].im += c*product[i][j][k].im + s*product[i][j][k].re;
+		      }
+		  }
+	      }
 	    
 	    clear_complex_matrix(A);
 
@@ -587,7 +623,7 @@ namespace cudaprob3{
 	    getMfast(Enu, rho, nutype, d_dmMatMat, d_dmMatVac);
 	    
 	    getArg(Len, Enu, d_dmMatVac, Arg, phase_offset);
-	    getA(Enu, rho, d_dmMatVac, d_dmMatMat, nutype, phase_offset, Arg, Aout);
+	    getA(Len, Enu, rho, d_dmMatVac, d_dmMatMat, nutype, phase_offset, Arg, Aout);
 	  }
 
             /*
