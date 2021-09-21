@@ -732,9 +732,11 @@ namespace cudaprob3{
 		math::ComplexNumber<FLOAT_T> ExpansionMatrix[nMaxLayers][nExp][nNuFlav][nNuFlav];
 		FLOAT_T arg[nMaxLayers][nNuFlav];
 
+		/*
 		// DB Uncomment for debugging get_transition_matrix against get_transition_matrix_expansion
 		math::ComplexNumber<FLOAT_T> TransitionMatrix_getA[nNuFlav][nNuFlav];
 		FLOAT_T arg_getA[nMaxLayers][nNuFlav];
+		*/
 
 		FLOAT_T Prob[nNuFlav][nNuFlav];
 		/*
@@ -764,23 +766,31 @@ namespace cudaprob3{
 		      }
 		    }
 
+		    /*
 		    //DB Uncomment for debugging get_transition_matrix against get_transition_matrix_expansion
 		    clear_complex_matrix(TransitionMatrix_getA);
+		    */
 
-		    for (int iLayer=0;iLayer<nMaxLayers;iLayer++) {
+		    UNROLLQUALIFIER
+		      for (int iLayer=0;iLayer<nMaxLayers;iLayer++) {
+			UNROLLQUALIFIER
+			  for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
+			    arg[iLayer][iNuFlav] = 0.;
+			    
+			    /*
+			    //DB Uncomment for debugging get_transition_matrix against get_transition_matrix_expansion
+			    arg_getA[iLayer][iNuFlav] = 0.;
+			    */
+			  }
+		      }
+		    
+		    UNROLLQUALIFIER
 		      for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
-			arg[iLayer][iNuFlav] = 0.;
-
-			//DB Uncomment for debugging get_transition_matrix against get_transition_matrix_expansion
-			arg_getA[iLayer][iNuFlav] = 0.;
+			UNROLLQUALIFIER
+			  for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++) {
+			    Prob[iNuFlav][jNuFlav] = 0.;
+			  }
 		      }
-		    }
-
-		    for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
-		      for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++) {
-			Prob[iNuFlav][jNuFlav] = 0.;
-		      }
-		    }
 		    
 		    /*
 		    for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
@@ -837,6 +847,7 @@ namespace cudaprob3{
 		      const FLOAT_T distance = getTraversedDistanceOfLayer(radii, iLayer, MaxLayer, PathLength, TotalEarthLength, cosine_zenith);
 		      const FLOAT_T density = getDensityOfLayer(rhos, yps, iLayer, MaxLayer);
 		     
+		      /*
 		      //DB Uncomment for debugging get_transition_matrix against get_transition_matrix_expansion
 		      get_transition_matrix(type,
 					    energy,
@@ -846,6 +857,7 @@ namespace cudaprob3{
 					    arg_getA[iLayer],
 					    phaseOffset
 					    );
+		      */
 
 		      get_transition_matrix_expansion(type,
 						      energy,
@@ -862,6 +874,7 @@ namespace cudaprob3{
 			multiply_phase_matrix(arg[iLayer][iNuFlav],ExpansionMatrix[iLayer][iNuFlav],TransitionMatrix);
 		      }
 		      
+		      /*
 		      //DB Uncomment for debugging get_transition_matrix against get_transition_matrix_expansion
 		      for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
 			for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++) {
@@ -932,6 +945,7 @@ namespace cudaprob3{
 			  }
 			}
 		      }
+		      */
 
 		      //clear_complex_matrix(TransitionProduct[iLayer]);
 		      if (iLayer == iLayerAtm) { // atmosphere
@@ -1021,11 +1035,13 @@ namespace cudaprob3{
 		    //   math::ComplexNumber<FLOAT_T> TransitionProduct[nMaxLayers][nNuFlav][nNuFlav];
 		    //   math::ComplexNumber<FLOAT_T> ExpansionMatrix[nMaxLayers][nExp][nNuFlav][nNuFlav];
 
-		    for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) { //Flavour after osc
-		      for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++) { //Flavour before osc
-			Prob[jNuFlav][iNuFlav] += finalTransitionMatrix[jNuFlav][iNuFlav].re * finalTransitionMatrix[jNuFlav][iNuFlav].re + finalTransitionMatrix[jNuFlav][iNuFlav].im * finalTransitionMatrix[jNuFlav][iNuFlav].im;
+		    UNROLLQUALIFIER
+		      for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) { //Flavour after osc
+			UNROLLQUALIFIER
+			  for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++) { //Flavour before osc
+			    Prob[jNuFlav][iNuFlav] += finalTransitionMatrix[jNuFlav][iNuFlav].re * finalTransitionMatrix[jNuFlav][iNuFlav].re + finalTransitionMatrix[jNuFlav][iNuFlav].im * finalTransitionMatrix[jNuFlav][iNuFlav].im;
+			  }
 		      }
-		    }
 
 		    /*
 		    for (int iExp=0;iExp<nExp;iExp++) {
