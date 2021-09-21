@@ -482,10 +482,10 @@ namespace cudaprob3{
 
                 for (int i=0; i<nNuFlav; i++) {
                   for (int j=0; j<nNuFlav; j++) {
-                    RR_nk[j] += U(iNuFlav,i).re * product[iNuFlav][j][iExp].re;
-                    RI_nk[j] += U(iNuFlav,i).re * product[iNuFlav][j][iExp].im;
-                    IR_nk[j] += U(iNuFlav,i).im * product[iNuFlav][j][iExp].re;
-                    II_nk[j] += U(iNuFlav,i).im * product[iNuFlav][j][iExp].im;
+                    RR_nk[j] += U(iNuFlav,i).re * product[i][j][iExp].re;
+                    RI_nk[j] += U(iNuFlav,i).re * product[i][j][iExp].im;
+                    IR_nk[j] += U(iNuFlav,i).im * product[i][j][iExp].re;
+                    II_nk[j] += U(iNuFlav,i).im * product[i][j][iExp].im;
                   }
                 }
 
