@@ -499,7 +499,7 @@ namespace cudaprob3{
                     ReSum -= II_nk[j] * U(jNuFlav,j).re;
 
                     ImSum += II_nk[j] * U(jNuFlav,j).im;
-                    ImSum += IR_nk[j] * U(jNuFlav,j).im;
+                    ImSum += IR_nk[j] * U(jNuFlav,j).re;
                     ImSum += RI_nk[j] * U(jNuFlav,j).re;
                     ImSum -= RR_nk[j] * U(jNuFlav,j).im;
                   }
@@ -861,7 +861,7 @@ namespace cudaprob3{
 			      }
 			    }
 
-			    std::cout << "------------ TransitionMatrix[i,mNuFlav] -------------" << std::endl;
+			    std::cout << "------------ TransitionMatrix[kNuFlav,mNuFlav] -------------" << std::endl;
 			    for (int kNuFlav=0;kNuFlav<nNuFlav;kNuFlav++) {
 			      for (int mNuFlav=0;mNuFlav<nNuFlav;mNuFlav++) {
 
@@ -879,7 +879,7 @@ namespace cudaprob3{
 			      }
 			    }
 
-			    std::cout << "------------ TransitionMatrix_getA[i,mNuFlav] -------------" << std::endl;
+			    std::cout << "------------ TransitionMatrix_getA[kNuFlav,mNuFlav] -------------" << std::endl;
 			    for (int kNuFlav=0;kNuFlav<nNuFlav;kNuFlav++) {
 			      for (int mNuFlav=0;mNuFlav<nNuFlav;mNuFlav++) {
 
