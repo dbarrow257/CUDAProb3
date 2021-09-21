@@ -691,7 +691,7 @@ namespace cudaprob3{
 
 		math::ComplexNumber<FLOAT_T> ExpansionMatrix[nMaxLayers][nNuFlav][nNuFlav][nNuFlav];
 		FLOAT_T arg[nMaxLayers][nNuFlav];
-		FLOAT_T darg0_dProductionHeight[nNuFlav];
+		FLOAT_T darg0_ddistance[nNuFlav];
 		math::ComplexNumber<FLOAT_T> totalLenShiftFactor[nNuFlav][nNuFlav][nExp];
 
 		FLOAT_T Prob[nNuFlav][nNuFlav];
@@ -727,7 +727,7 @@ namespace cudaprob3{
 		    }
 
 		    for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
-		      darg0_dProductionHeight[iNuFlav] = 0.;
+		      darg0_ddistance[iNuFlav] = 0.;
 		    }
 
 		    //============================================================================================================
@@ -785,12 +785,12 @@ namespace cudaprob3{
 
 			if (distance==0.) {
 			  for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
-			    darg0_dProductionHeight[iNuFlav] = 0.;
+			    darg0_ddistance[iNuFlav] = 0.;
 			  }
 			}
 			else {
 			  for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
-			    darg0_dProductionHeight[iNuFlav] = arg[iLayer][iNuFlav]/distance;
+			    darg0_ddistance[iNuFlav] = arg[iLayer][iNuFlav]/distance;
 			  }
 			}
 
@@ -811,7 +811,7 @@ namespace cudaprob3{
 
 		      for (int ieig0=0;ieig0<nNuFlav;ieig0++) { 
 			for (int jeig0=0;jeig0<nNuFlav;jeig0++) { 
-			  FLOAT_T darg_dh = darg0_dProductionHeight[ieig0]-darg0_dProductionHeight[jeig0];
+			  FLOAT_T darg_dh = darg0_ddistance[ieig0]-darg0_ddistance[jeig0];
 
 			  math::ComplexNumber<FLOAT_T> f;
 			  f.re = 0.;
