@@ -22,6 +22,7 @@ along with CUDAProb3++.  If not, see <http://www.gnu.org/licenses/>.
 
 #define NPRODHEIGHTBINS 20
 #define MAXNLAYERS 12
+#define EPSILON 1e-6
 
 namespace cudaprob3{
 

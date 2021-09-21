@@ -46,7 +46,7 @@ namespace cudaprob3{
       template<typename FLOAT_T>
       HOSTDEVICEQUALIFIER
       FLOAT_T defined_sinc(FLOAT_T A) {
-	if (abs(A) >= std::numeric_limits<FLOAT_T>::epsilon()) {
+	if (abs(A) >= EPSILON) {
 	  return sin(A)/A;
 	} else {
 	  return FLOAT_T(1) - A*A/6. + A*A*A*A/120.;
