@@ -715,10 +715,10 @@ namespace cudaprob3{
 
 		const int nExp = 3;
 		const int nNuFlav = 3;
-		const int nMaxLayers = 8;
 
 		FLOAT_T phaseOffset = 0.;
 
+		const int nMaxLayers = 8;
 		if (MaxLayer > nMaxLayers) {
 		  printf("Error: MaxLayer=%d given by nMaxLayers=%d. Please increase nMaxLayers in physics.cc:%d\n", MaxLayer, nMaxLayers, __LINE__);
 		  std::exit(-1);
@@ -944,6 +944,7 @@ namespace cudaprob3{
 		    //============================================================================================================
 		    //DB Calculate totalLenShiftFactors using atmospheric layer
 		    
+		    /*
 		    for (int iPathLength=0;iPathLength<NPRODHEIGHTBINS;iPathLength++) {
 		      FLOAT_T h0 = PathLengths[iPathLength];
 		      FLOAT_T h1 = PathLengths[iPathLength+1];
@@ -976,6 +977,7 @@ namespace cudaprob3{
 			}
 		      }
 		    }
+		    */
 
 		    //============================================================================================================
 		    //DB Calculate Probability from TransitionProduct
@@ -994,7 +996,8 @@ namespace cudaprob3{
 		    for (int iExp=0;iExp<nExp;iExp++) {
 		      for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) { //Flavour after osc
 			for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++) { //Flavour before osc
-			  Prob[jNuFlav][iNuFlav] += Product[iExp][iNuFlav][jNuFlav].re * Product[iExp][iNuFlav][jNuFlav].re + Product[iExp][iNuFlav][jNuFlav].im * Product[iExp][iNuFlav][jNuFlav].im;
+			  //Prob[jNuFlav][iNuFlav] += Product[iExp][iNuFlav][jNuFlav].re * Product[iExp][iNuFlav][jNuFlav].re + Product[iExp][iNuFlav][jNuFlav].im * Product[iExp][iNuFlav][jNuFlav].im;
+			  Prob[jNuFlav][iNuFlav] += TransitionProduct[iExp][iNuFlav][jNuFlav].re * TransitionProduct[iExp][iNuFlav][jNuFlav].re + TransitionProduct[iExp][iNuFlav][jNuFlav].im * TransitionProduct[iExp][iNuFlav][jNuFlav].im;
 			}
 		      }
 		      
@@ -1019,14 +1022,19 @@ namespace cudaprob3{
 
 			  //DB SPhase = Phase * totalLenShiftFactor[iExp][jExp][jNuFlav] (Both complex numbers)
 			  math::ComplexNumber<FLOAT_T> SPhase;
-			  SPhase.re = Phase.re * totalLenShiftFactor[iExp][jExp][jNuFlav].re - Phase.im * totalLenShiftFactor[iExp][jExp][jNuFlav].re;
+			  SPhase.re = Phase.re * totalLenShiftFactor[iExp][jExp][jNuFlav].re - Phase.im * totalLenShiftFactor[iExp][jExp][jNuFlav].im;
 			  SPhase.im = Phase.im * totalLenShiftFactor[iExp][jExp][jNuFlav].re + Phase.re * totalLenShiftFactor[iExp][jExp][jNuFlav].im;
 
 			  for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) { //Flavour after osc
-			    Prob[jNuFlav][iNuFlav] +=  2. * Product[jExp][iNuFlav][jNuFlav].re * Product[iExp][iNuFlav][jNuFlav].re * SPhase.re
+			    /*Prob[jNuFlav][iNuFlav] +=  2. * Product[jExp][iNuFlav][jNuFlav].re * Product[iExp][iNuFlav][jNuFlav].re * SPhase.re
 			                            +  2. * Product[jExp][iNuFlav][jNuFlav].im * Product[iExp][iNuFlav][jNuFlav].im * SPhase.re
 			                            +  2. * Product[jExp][iNuFlav][jNuFlav].im * Product[iExp][iNuFlav][jNuFlav].re * SPhase.im
-			                            -  2. * Product[jExp][iNuFlav][jNuFlav].re * Product[iExp][iNuFlav][jNuFlav].im * SPhase.im;
+			                            -  2. * Product[jExp][iNuFlav][jNuFlav].re * Product[iExp][iNuFlav][jNuFlav].im * SPhase.im;*/
+
+			    Prob[jNuFlav][iNuFlav] +=  2. * TransitionProduct[jExp][iNuFlav][jNuFlav].re * TransitionProduct[iExp][iNuFlav][jNuFlav].re * SPhase.re
+			                            +  2. * TransitionProduct[jExp][iNuFlav][jNuFlav].im * TransitionProduct[iExp][iNuFlav][jNuFlav].im * SPhase.re
+			                            +  2. * TransitionProduct[jExp][iNuFlav][jNuFlav].im * TransitionProduct[iExp][iNuFlav][jNuFlav].re * SPhase.im
+			                            -  2. * TransitionProduct[jExp][iNuFlav][jNuFlav].re * TransitionProduct[iExp][iNuFlav][jNuFlav].im * SPhase.im;
 			  }
 			}
 		      }
