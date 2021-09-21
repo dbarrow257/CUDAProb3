@@ -527,7 +527,10 @@ namespace cudaprob3{
 
 	    math::ComplexNumber<FLOAT_T> X[3][3];
 	    clear_complex_matrix(X);
-	    multiply_phase_matrix(Arg, product, X);
+
+	    for (int i=0;i<3;i++) {
+	      multiply_phase_matrix(Arg[i], product[i], X);
+	    }
 	    
 	    clear_complex_matrix(A);
 
@@ -695,6 +698,9 @@ namespace cudaprob3{
 		math::ComplexNumber<FLOAT_T> totalLenShiftFactor[nNuFlav][nNuFlav][nExp];
 
 		FLOAT_T Prob[nNuFlav][nNuFlav];
+
+		math::ComplexNumber<FLOAT_T> TransitionMatrix_getA[nNuFlav][nNuFlav];
+		FLOAT_T arg_getA[nMaxLayers][nNuFlav];
 		
 #ifndef __CUDA_ARCH__
 		for(int index_energy = 0; index_energy < n_energies; index_energy += 1){
@@ -713,10 +719,12 @@ namespace cudaprob3{
 		      }
 		    }
 		    clear_complex_matrix(TransitionMatrix);
+		    clear_complex_matrix(TransitionMatrix_getA);
 
 		    for (int iLayer=0;iLayer<nMaxLayers;iLayer++) {
 		      for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
 			arg[iLayer][iNuFlav] = 0.;
+			arg_getA[iLayer][iNuFlav] = 0.;
 		      }
 		    }
 		    
@@ -763,7 +771,16 @@ namespace cudaprob3{
 		    for (int iLayer=0;iLayer<=MaxLayer;iLayer++){
 		      const FLOAT_T distance = getTraversedDistanceOfLayer(radii, iLayer, MaxLayer, PathLength, TotalEarthLength, cosine_zenith);
 		      const FLOAT_T density = getDensityOfLayer(rhos, yps, iLayer, MaxLayer);
-		      
+		     
+		      get_transition_matrix(type,
+					    energy,
+					    density,
+					    distance / Constants<FLOAT_T>::km2cm(),
+					    TransitionMatrix_getA,
+					    arg_getA[iLayer],
+					    phaseOffset
+					    );
+ 
 		      get_transition_matrix_expansion(type,
 						      energy,
 						      density,
@@ -777,6 +794,76 @@ namespace cudaprob3{
 		      clear_complex_matrix(TransitionMatrix);
 		      for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
 			multiply_phase_matrix(arg[iLayer][iNuFlav],ExpansionMatrix[iLayer][iNuFlav],TransitionMatrix);
+		      }
+		      
+		      for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
+			for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++) {
+			  
+			  if ( fabs(TransitionMatrix[iNuFlav][jNuFlav].re - TransitionMatrix_getA[iNuFlav][jNuFlav].re)>1e-6 || fabs(TransitionMatrix[iNuFlav][jNuFlav].im - TransitionMatrix_getA[iNuFlav][jNuFlav].im)>1e-6 ) {
+			    printf("TransitionMatrix[iNuFlav][jNuFlav].re: %4.2f \n",TransitionMatrix[iNuFlav][jNuFlav].re);
+			    printf("TransitionMatrix[iNuFlav][jNuFlav].im: %4.2f \n",TransitionMatrix[iNuFlav][jNuFlav].im);
+			    printf("TransitionMatrix_getA[iNuFlav][jNuFlav].re: %4.2f \n",TransitionMatrix_getA[iNuFlav][jNuFlav].re);
+			    printf("TransitionMatrix_getA[iNuFlav][jNuFlav].im: %4.2f \n",TransitionMatrix_getA[iNuFlav][jNuFlav].im);
+
+			    std::cout << "------------ Arg[i] -------------" << std::endl;
+			    for (int kNuFlav=0;kNuFlav<nNuFlav;kNuFlav++) {
+			      std::cout << "arg[" << kNuFlav << "]:" << arg[iLayer][kNuFlav] << std::endl;
+			    }
+
+			    std::cout << "------------ Arg_getA[iNuFlav] -------------" << std::endl;
+			    for (int kNuFlav=0;kNuFlav<nNuFlav;kNuFlav++) {
+			      std::cout << "arg_getA[" << kNuFlav << "]:" << arg_getA[iLayer][kNuFlav] << std::endl;
+			    }
+
+			    std::cout << "------------ ExpansionMatrix[iLayer,iExp,kNuFlav,mNuFlav] -------------" << std::endl;
+			    for (int iExp=0;iExp<nExp;iExp++) {
+			      for (int kNuFlav=0;kNuFlav<nNuFlav;kNuFlav++) {
+				for (int mNuFlav=0;mNuFlav<nNuFlav;mNuFlav++) {
+				  std::cout << "ExpansionMatrix[" << iLayer << "," << iExp << "," << kNuFlav << "," << mNuFlav << "].re:" << ExpansionMatrix[iLayer][iExp][kNuFlav][mNuFlav].re << std::endl;
+				  std::cout << "ExpansionMatrix[" << iLayer << "," << iExp << "," << kNuFlav << "," << mNuFlav << "].im:" << ExpansionMatrix[iLayer][iExp][kNuFlav][mNuFlav].im << std::endl;
+				}
+			      }
+			    }
+
+			    std::cout << "------------ TransitionMatrix[i,mNuFlav] -------------" << std::endl;
+			    for (int kNuFlav=0;kNuFlav<nNuFlav;kNuFlav++) {
+			      for (int mNuFlav=0;mNuFlav<nNuFlav;mNuFlav++) {
+
+				if (fabs(TransitionMatrix[kNuFlav][mNuFlav].re) < 1e-9) {
+				  std::cout << "TransitionMatrix[" << kNuFlav << "," << mNuFlav << "].re:" << 0 << std::endl;
+				} else {
+				  std::cout << "TransitionMatrix[" << kNuFlav << "," << mNuFlav << "].re:" << TransitionMatrix[kNuFlav][mNuFlav].re << std::endl;
+				}
+
+				if (fabs(TransitionMatrix[kNuFlav][mNuFlav].im) < 1e-9) {
+				  std::cout << "TransitionMatrix[" << kNuFlav << "," << mNuFlav << "].im:" << 0 << std::endl;
+				} else {
+				  std::cout << "TransitionMatrix[" << kNuFlav << "," << mNuFlav << "].im:" << TransitionMatrix[kNuFlav][mNuFlav].im << std::endl;
+				}
+			      }
+			    }
+
+			    std::cout << "------------ TransitionMatrix_getA[i,mNuFlav] -------------" << std::endl;
+			    for (int kNuFlav=0;kNuFlav<nNuFlav;kNuFlav++) {
+			      for (int mNuFlav=0;mNuFlav<nNuFlav;mNuFlav++) {
+
+				if (fabs(TransitionMatrix_getA[kNuFlav][mNuFlav].re) < 1e-9) {
+				  std::cout << "TransitionMatrix_getA[" << kNuFlav << "," << mNuFlav << "].re:" << 0 << std::endl;
+				} else {
+				  std::cout << "TransitionMatrix_getA[" << kNuFlav << "," << mNuFlav << "].re:" << TransitionMatrix_getA[kNuFlav][mNuFlav].re << std::endl;
+				}
+
+				if (fabs(TransitionMatrix_getA[kNuFlav][mNuFlav].im) < 1e-9) {
+				  std::cout << "TransitionMatrix_getA[" << kNuFlav << "," << mNuFlav << "].im:" << 0 << std::endl;
+				} else {
+				  std::cout << "TransitionMatrix_getA[" << kNuFlav << "," << mNuFlav << "].im:" << TransitionMatrix_getA[kNuFlav][mNuFlav].im << std::endl;
+				}
+			      }
+			    }
+
+			    std::exit(-1);
+			  }
+			}
 		      }
 
 		      clear_complex_matrix(TransitionProduct[iLayer]);
