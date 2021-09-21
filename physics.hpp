@@ -736,9 +736,9 @@ namespace cudaprob3{
 		math::ComplexNumber<FLOAT_T> TransitionMatrix_getA[nNuFlav][nNuFlav];
 		FLOAT_T arg_getA[nMaxLayers][nNuFlav];
 
+		FLOAT_T Prob[nNuFlav][nNuFlav];
 		/*
 		math::ComplexNumber<FLOAT_T> TransitionProduct[nMaxLayers][nNuFlav][nNuFlav];
-		FLOAT_T Prob[nNuFlav][nNuFlav];
 
 		math::ComplexNumber<FLOAT_T> totalLenShiftFactor[nNuFlav][nNuFlav][nExp];
 		FLOAT_T PathLengths[NPRODHEIGHTBINS];
@@ -776,16 +776,11 @@ namespace cudaprob3{
 		      }
 		    }
 
-		    //clear_complex_matrix(TransitionTemp);
-		    //clear_complex_matrix(finalTransitionMatrix);
-		    
-		    /*
 		    for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
 		      for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++) {
 			Prob[iNuFlav][jNuFlav] = 0.;
 		      }
 		    }
-		    */
 		    
 		    /*
 		    for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
@@ -1026,13 +1021,11 @@ namespace cudaprob3{
 		    //   math::ComplexNumber<FLOAT_T> TransitionProduct[nMaxLayers][nNuFlav][nNuFlav];
 		    //   math::ComplexNumber<FLOAT_T> ExpansionMatrix[nMaxLayers][nExp][nNuFlav][nNuFlav];
 
-		    /*
 		    for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) { //Flavour after osc
 		      for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++) { //Flavour before osc
 			Prob[jNuFlav][iNuFlav] += finalTransitionMatrix[jNuFlav][iNuFlav].re * finalTransitionMatrix[jNuFlav][iNuFlav].re + finalTransitionMatrix[jNuFlav][iNuFlav].im * finalTransitionMatrix[jNuFlav][iNuFlav].im;
 		      }
 		    }
-		    */
 
 		    /*
 		    for (int iExp=0;iExp<nExp;iExp++) {
@@ -1082,18 +1075,13 @@ namespace cudaprob3{
 		      for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++){ //Flavour before osc
                         UNROLLQUALIFIER
                           for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++){  //Flavour after osc
-			    const FLOAT_T re = finalTransitionMatrix[jNuFlav][iNuFlav].re;
-			    const FLOAT_T im = finalTransitionMatrix[jNuFlav][iNuFlav].im;
-			    const FLOAT_T prob = re * re + im * im;
-
-			    //std::cout << "Prob:" << index_cosine << " " << index_energy << " " << prob << std::endl;
 #ifdef __CUDA_ARCH__
 			    const unsigned long long resultIndex = (unsigned long long)(n_energies) * (unsigned long long)(index_cosine) + (unsigned long long)(index_energy);
-			    result[resultIndex + (unsigned long long)(n_energies) * (unsigned long long)(n_cosines) * (unsigned long long)((iNuFlav * nNuFlav + jNuFlav))] = re * re + im * im;
+			    result[resultIndex + (unsigned long long)(n_energies) * (unsigned long long)(n_cosines) * (unsigned long long)((iNuFlav * nNuFlav + jNuFlav))] = Prob[jNuFlav][iNuFlav];
 #else
 			    const unsigned long long resultIndex = (unsigned long long)(index_cosine) * (unsigned long long)(n_energies) * (unsigned long long)(9)
 			      + (unsigned long long)(index_energy) * (unsigned long long)(9);
-			    result[resultIndex + (unsigned long long)((iNuFlav * nNuFlav + jNuFlav))] = re * re + im * im;
+			    result[resultIndex + (unsigned long long)((iNuFlav * nNuFlav + jNuFlav))] = Prob[jNuFlav][iNuFlav];
 #endif
 			  }
 		      }
