@@ -991,13 +991,13 @@ namespace cudaprob3{
 		      for (int iPathLength=0;iPathLength<(20-1);iPathLength++) {
 			FLOAT_T h0 = PathLengths[iPathLength];
 			FLOAT_T h1 = PathLengths[iPathLength+1];
-			FLOAT_T hm = (h0+h1)/2.;
+			FLOAT_T hm = (h1+h0)/2.;
 			FLOAT_T hw = (h1-h0);
 		      
 			UNROLLQUALIFIER
 			  for (int ieig0=0;ieig0<nNuFlav;ieig0++) { 
 			    UNROLLQUALIFIER
-			      for (int jeig0=0;jeig0<nNuFlav;jeig0++) { 
+			      for (int jeig0=0;jeig0<ieig0;jeig0++) { 
 				FLOAT_T darg_distance = darg0_ddistance[ieig0]-darg0_ddistance[jeig0];
 				
 				//factor.re = 0
@@ -1045,7 +1045,7 @@ namespace cudaprob3{
 				    totalLenShiftFactor[ieig0][jeig0][iNuFlav].im += productionHeight_prob_list[ProbIndex] * sinc_exp_factor.im;
 				    
 				    totalLenShiftFactor[jeig0][ieig0][iNuFlav].re += productionHeight_prob_list[ProbIndex] * sinc_exp_factor.re;
-				    totalLenShiftFactor[jeig0][ieig0][iNuFlav].im -= productionHeight_prob_list[ProbIndex] * sinc_exp_factor.im;
+				    totalLenShiftFactor[jeig0][ieig0][iNuFlav].im += productionHeight_prob_list[ProbIndex] * sinc_exp_factor.im;
 				  }
 			      }
 			  }
