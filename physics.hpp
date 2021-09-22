@@ -741,8 +741,6 @@ namespace cudaprob3{
 
 		FLOAT_T Prob[nNuFlav][nNuFlav];
 
-		math::ComplexNumber<FLOAT_T> TransitionProduct[nMaxLayers][nNuFlav][nNuFlav];
-
 		math::ComplexNumber<FLOAT_T> totalLenShiftFactor[nNuFlav][nNuFlav][nExp];
 		FLOAT_T PathLengths[NPRODHEIGHTBINS];
 		FLOAT_T darg0_ddistance[nNuFlav];
@@ -869,9 +867,8 @@ namespace cudaprob3{
 						      phaseOffset
 						      ); 
 		
-		      //DB For each layer, A = sum_k C[k] exp(i a[k]) .. TransitionMatrix is A, ExpansionMatrix is C[k], TransitionProduct is the product of A for each layer (Prob3++)
+		      //DB For each layer, A = sum_k C[k] exp(i a[k])
 		      clear_complex_matrix(TransitionMatrix);
-		      clear_complex_matrix(TransitionProduct[iLayer]);
 
 		      for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
 			multiply_phase_matrix(arg[iLayer][iNuFlav],ExpansionMatrix[iLayer][iNuFlav],TransitionMatrix);
@@ -953,7 +950,6 @@ namespace cudaprob3{
 		      if (iLayer == iLayerAtm) { // atmosphere
 
 			copy_complex_matrix(TransitionMatrix , finalTransitionMatrix);
-			copy_complex_matrix(TransitionMatrix, TransitionProduct[iLayer]);
 			
 			if (distance==0.) {
 			  for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
@@ -990,52 +986,73 @@ namespace cudaprob3{
 		    //============================================================================================================
 		    //DB Calculate totalLenShiftFactors using atmospheric layer
 		    
+		    //for (int iPathLength=0;iPathLength<NPRODHEIGHTBINS;iPathLength++) {
 		    UNROLLQUALIFIER
-		      for (int iPathLength=0;iPathLength<NPRODHEIGHTBINS;iPathLength++) {
+		      for (int iPathLength=0;iPathLength<(20-1);iPathLength++) {
 			FLOAT_T h0 = PathLengths[iPathLength];
 			FLOAT_T h1 = PathLengths[iPathLength+1];
 			FLOAT_T hm = (h0+h1)/2.;
 			FLOAT_T hw = (h1-h0);
-			
+		      
 			UNROLLQUALIFIER
-			for (int ieig0=0;ieig0<nNuFlav;ieig0++) { 
-			  UNROLLQUALIFIER
-			    for (int jeig0=0;jeig0<nNuFlav;jeig0++) { 
-			      FLOAT_T darg_distance = darg0_ddistance[ieig0]-darg0_ddistance[jeig0];
-			      
-			      //factor.re = 0
-			      //factor.im = darg_distance*hm
-			      //
-			      //exp(factor).re = exp(f.re)*cos(f.im) = cos(darg_distance*hm)
-			      //exp(factor).im = exp(f.re)*sin(f.im) = sin(darg_distance*hm)
-			      //
-			      //sinc(0.5 * darg_distance * hw) * exp(factor).re = sinc(0.5 * darg_distance * hw) * cos(darg_distance*hm)
-			      //sinc(0.5 * darg_distance * hw) * exp(factor).re = sinc(0.5 * darg_distance * hw) * sin(darg_distance*hm)
-			      
-			      math::ComplexNumber<FLOAT_T> sinc_exp_factor; 
-			      FLOAT_T Arg = 0.5 * darg_distance * hw;
-			      
-			      sinc_exp_factor.re = cudaprob3::math::defined_sinc(Arg) * cos(darg_distance * hm);
-			      sinc_exp_factor.im = cudaprob3::math::defined_sinc(Arg) * sin(darg_distance * hm);
-			      
-			      UNROLLQUALIFIER
-			      for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) { //In flav
+			  for (int ieig0=0;ieig0<nNuFlav;ieig0++) { 
+			    UNROLLQUALIFIER
+			      for (int jeig0=0;jeig0<nNuFlav;jeig0++) { 
+				FLOAT_T darg_distance = darg0_ddistance[ieig0]-darg0_ddistance[jeig0];
+				
+				//factor.re = 0
+				//factor.im = darg_distance*hm
+				//
+				//exp(factor).re = exp(f.re)*cos(f.im) = cos(darg_distance*hm)
+				//exp(factor).im = exp(f.re)*sin(f.im) = sin(darg_distance*hm)
+				//
+				//sinc(0.5 * darg_distance * hw) * exp(factor).re = sinc(0.5 * darg_distance * hw) * cos(darg_distance*hm)
+				//sinc(0.5 * darg_distance * hw) * exp(factor).re = sinc(0.5 * darg_distance * hw) * sin(darg_distance*hm)
+				
+				math::ComplexNumber<FLOAT_T> sinc_exp_factor; 
+				FLOAT_T Sinc_Arg = 0.5 * darg_distance * hw;
+				
+				sinc_exp_factor.re = cudaprob3::math::defined_sinc(Sinc_Arg) * cos(darg_distance * hm);
+				sinc_exp_factor.im = cudaprob3::math::defined_sinc(Sinc_Arg) * sin(darg_distance * hm);
+				
+				UNROLLQUALIFIER
+				  for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) { //In flav
+				    
+				    int ProbIndex = type*nNuFlav*n_energies*n_cosines*NPRODHEIGHTBINS + iNuFlav*n_energies*n_cosines*NPRODHEIGHTBINS
+				      + index_energy*n_cosines*NPRODHEIGHTBINS + index_cosine*NPRODHEIGHTBINS + iPathLength;
+				    
+				    /*
+				    //Temporary debug : 0.05 = 1.0/20 bins
+				    if (productionHeight_prob_list[ProbIndex] != 0.05) {
+				      std::cout << "Probability:" << productionHeight_prob_list[ProbIndex] << std::endl;
+				      std::cout << "Index:" << ProbIndex << std::endl;
+				      
+				      std::cout << "type:" << type << std::endl;
+				      std::cout << "iNuFlav:" << iNuFlav << std::endl;
+				      std::cout << "index_energy:" << index_energy << std::endl;
+				      std::cout << "index_cosine:" << index_cosine << std::endl;
+				      std::cout << "iPathLength:" << iPathLength << std::endl;
+				      std::cout << "NPRODHEIGHTBINS:" << NPRODHEIGHTBINS << std::endl;
+				      
+				      
+				      std::cout << "nNuFlav:" << nNuFlav << std::endl;
+				      
+				      throw;
+				    }
+				    */
 
-				int ProbIndex = type*nNuFlav*n_energies*n_cosines*NPRODHEIGHTBINS + iNuFlav*n_energies*n_cosines*NPRODHEIGHTBINS
-				                + index_energy*n_cosines*NPRODHEIGHTBINS + index_cosine*NPRODHEIGHTBINS + iPathLength;
-
-				totalLenShiftFactor[ieig0][jeig0][iNuFlav].re += productionHeight_prob_list[ProbIndex] * sinc_exp_factor.re;
-				totalLenShiftFactor[ieig0][jeig0][iNuFlav].im += productionHeight_prob_list[ProbIndex] * sinc_exp_factor.im;
-
-				totalLenShiftFactor[jeig0][ieig0][iNuFlav].re += productionHeight_prob_list[ProbIndex] * sinc_exp_factor.re;
-				totalLenShiftFactor[jeig0][ieig0][iNuFlav].im -= productionHeight_prob_list[ProbIndex] * sinc_exp_factor.im;
+				    totalLenShiftFactor[ieig0][jeig0][iNuFlav].re += productionHeight_prob_list[ProbIndex] * sinc_exp_factor.re;
+				    totalLenShiftFactor[ieig0][jeig0][iNuFlav].im += productionHeight_prob_list[ProbIndex] * sinc_exp_factor.im;
+				    
+				    totalLenShiftFactor[jeig0][ieig0][iNuFlav].re += productionHeight_prob_list[ProbIndex] * sinc_exp_factor.re;
+				    totalLenShiftFactor[jeig0][ieig0][iNuFlav].im -= productionHeight_prob_list[ProbIndex] * sinc_exp_factor.im;
+				  }
 			      }
-			    }
-			}
+			  }
 		      }
-
+		    
 		    //============================================================================================================
-		    //DB Calculate Probability from TransitionProduct
+		    //DB Calculate Probability from finalTransitionMatrix
 
 		    /*
 		    UNROLLQUALIFIER
@@ -1047,14 +1064,14 @@ namespace cudaprob3{
 		      }
 		    */
 
-		    //DB B[iExp]       = A(layer = nLayers-1) * C(layer=0)[iExp]
-		    //   Product[iExp] = TransitionProduct[iLayerAtm] * ExpansionMatrix[iLayerAtm][iExp]
+		    //DB B[iExp]       = A(layer = nLayers-1)  * C(layer=0)[iExp]
+		    //   Product[iExp] = finalTransitionMatrix * ExpansionMatrix[iLayerAtm][iExp]
 		    //
 		    //   math::ComplexNumber<FLOAT_T> Product[nExp][nNuFlav][nNuFlav];
-		    //   math::ComplexNumber<FLOAT_T> TransitionProduct[nMaxLayers][nNuFlav][nNuFlav];
+		    //   math::ComplexNumber<FLOAT_T> finalTransitionMatrix[nNuFlav][nNuFlav];
 		    //   math::ComplexNumber<FLOAT_T> ExpansionMatrix[nMaxLayers][nExp][nNuFlav][nNuFlav];
 		    for (int iExp=0;iExp<nExp;iExp++) {
-		      multiply_complex_matrix(TransitionProduct[MaxLayer],ExpansionMatrix[iLayerAtm][iExp],Product[iExp]);
+		      multiply_complex_matrix(finalTransitionMatrix,ExpansionMatrix[iLayerAtm][iExp],Product[iExp]);
 		    }
 
 		    //If I comment out the below, I have matching oscillograms to prior implementation
@@ -1062,7 +1079,9 @@ namespace cudaprob3{
 		    UNROLLQUALIFIER
 		      for (int iExp=0;iExp<nExp;iExp++) {
 			
+			UNROLLQUALIFIER
 			for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++) { //Flavour before osc 
+			  UNROLLQUALIFIER
 			  for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) { //Flavour after osc 
 			    Prob[iNuFlav][jNuFlav] += Product[iExp][iNuFlav][jNuFlav].re * Product[iExp][iNuFlav][jNuFlav].re + Product[iExp][iNuFlav][jNuFlav].im * Product[iExp][iNuFlav][jNuFlav].im;
 			  }
@@ -1070,34 +1089,8 @@ namespace cudaprob3{
 
 			UNROLLQUALIFIER
 			  for (int jExp=0;jExp<iExp;jExp++) { //Expansion * Expansion terms
-
-			    /*			    
-			    //DB 0s for Atmospheric layer
-			    math::ComplexNumber<FLOAT_T> expon_arg0_iExp;
-			    expon_arg0_iExp.re = cos(arg[iLayerAtm][iExp]);
-			    expon_arg0_iExp.im = sin(arg[iLayerAtm][iExp]);
-			    
-			    //DB 0s for Atmospheric later
-			    math::ComplexNumber<FLOAT_T> expon_arg0_jExp;
-			    expon_arg0_jExp.re = cos(arg[iLayerAtm][jExp]);
-			    expon_arg0_jExp.im = sin(arg[iLayerAtm][jExp]);
-			    
-			    //DB Phase = expon_arg0_iExp * conj(expon_arg0_jExp)
-			    math::ComplexNumber<FLOAT_T> Phase;		       
-			    Phase.re = expon_arg0_iExp.re * expon_arg0_jExp.re - expon_arg0_iExp.im * expon_arg0_jExp.im;
-			    Phase.im = expon_arg0_iExp.im * expon_arg0_jExp.re + expon_arg0_iExp.re * expon_arg0_jExp.im;
-			    */
-			    
 			    UNROLLQUALIFIER
 			      for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++) { //Flavour before osc
-			
-				/*	
-				//DB SPhase = Phase * totalLenShiftFactor[iExp][jExp][jNuFlav] (Both complex numbers)
-				math::ComplexNumber<FLOAT_T> SPhase;
-				SPhase.re = Phase.re * totalLenShiftFactor[iExp][jExp][jNuFlav].re - Phase.im * totalLenShiftFactor[iExp][jExp][jNuFlav].im;
-				SPhase.im = Phase.im * totalLenShiftFactor[iExp][jExp][jNuFlav].re + Phase.re * totalLenShiftFactor[iExp][jExp][jNuFlav].im;
-				*/
-
 				UNROLLQUALIFIER
 				  for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) { //Flavour after osc
 				    Prob[iNuFlav][jNuFlav] +=  2. * Product[jExp][iNuFlav][jNuFlav].re * Product[iExp][iNuFlav][jNuFlav].re * totalLenShiftFactor[iExp][jExp][jNuFlav].re
