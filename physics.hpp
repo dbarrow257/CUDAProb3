@@ -1064,7 +1064,7 @@ namespace cudaprob3{
 			
 			for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++) { //Flavour before osc 
 			  for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) { //Flavour after osc 
-			    Prob[jNuFlav][iNuFlav] = Product[iExp][iNuFlav][jNuFlav].re * Product[iExp][iNuFlav][jNuFlav].re + Product[iExp][iNuFlav][jNuFlav].im * Product[iExp][iNuFlav][jNuFlav].im;
+			    Prob[iNuFlav][jNuFlav] += Product[iExp][iNuFlav][jNuFlav].re * Product[iExp][iNuFlav][jNuFlav].re + Product[iExp][iNuFlav][jNuFlav].im * Product[iExp][iNuFlav][jNuFlav].im;
 			  }
 			}
 
