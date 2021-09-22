@@ -1037,6 +1037,7 @@ namespace cudaprob3{
 		    //============================================================================================================
 		    //DB Calculate Probability from TransitionProduct
 
+		    /*
 		    UNROLLQUALIFIER
 		      for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) { //Flavour after osc
 			UNROLLQUALIFIER
@@ -1044,6 +1045,7 @@ namespace cudaprob3{
 			    Prob[jNuFlav][iNuFlav] += finalTransitionMatrix[jNuFlav][iNuFlav].re * finalTransitionMatrix[jNuFlav][iNuFlav].re + finalTransitionMatrix[jNuFlav][iNuFlav].im * finalTransitionMatrix[jNuFlav][iNuFlav].im;
 			  }
 		      }
+		    */
 
 		    //DB B[iExp]       = A(layer = nLayers-1) * C(layer=0)[iExp]
 		    //   Product[iExp] = TransitionProduct[iLayerAtm] * ExpansionMatrix[iLayerAtm][iExp]
@@ -1059,9 +1061,17 @@ namespace cudaprob3{
 		    //From here
 		    UNROLLQUALIFIER
 		      for (int iExp=0;iExp<nExp;iExp++) {
+			
+			for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++) { //Flavour before osc 
+			  for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) { //Flavour after osc 
+			    Prob[jNuFlav][iNuFlav] = Product[iExp][iNuFlav][jNuFlav].re * Product[iExp][iNuFlav][jNuFlav].re + Product[iExp][iNuFlav][jNuFlav].im * Product[iExp][iNuFlav][jNuFlav].im;
+			  }
+			}
+
 			UNROLLQUALIFIER
 			  for (int jExp=0;jExp<iExp;jExp++) { //Expansion * Expansion terms
-			    
+
+			    /*			    
 			    //DB 0s for Atmospheric layer
 			    math::ComplexNumber<FLOAT_T> expon_arg0_iExp;
 			    expon_arg0_iExp.re = cos(arg[iLayerAtm][iExp]);
@@ -1076,21 +1086,24 @@ namespace cudaprob3{
 			    math::ComplexNumber<FLOAT_T> Phase;		       
 			    Phase.re = expon_arg0_iExp.re * expon_arg0_jExp.re - expon_arg0_iExp.im * expon_arg0_jExp.im;
 			    Phase.im = expon_arg0_iExp.im * expon_arg0_jExp.re + expon_arg0_iExp.re * expon_arg0_jExp.im;
+			    */
 			    
 			    UNROLLQUALIFIER
 			      for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++) { //Flavour before osc
-				
+			
+				/*	
 				//DB SPhase = Phase * totalLenShiftFactor[iExp][jExp][jNuFlav] (Both complex numbers)
 				math::ComplexNumber<FLOAT_T> SPhase;
 				SPhase.re = Phase.re * totalLenShiftFactor[iExp][jExp][jNuFlav].re - Phase.im * totalLenShiftFactor[iExp][jExp][jNuFlav].im;
 				SPhase.im = Phase.im * totalLenShiftFactor[iExp][jExp][jNuFlav].re + Phase.re * totalLenShiftFactor[iExp][jExp][jNuFlav].im;
-				
+				*/
+
 				UNROLLQUALIFIER
 				  for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) { //Flavour after osc
-				    Prob[jNuFlav][iNuFlav] +=  2. * Product[jExp][iNuFlav][jNuFlav].re * Product[iExp][iNuFlav][jNuFlav].re * SPhase.re
-				                            +  2. * Product[jExp][iNuFlav][jNuFlav].im * Product[iExp][iNuFlav][jNuFlav].im * SPhase.re
-				                            +  2. * Product[jExp][iNuFlav][jNuFlav].im * Product[iExp][iNuFlav][jNuFlav].re * SPhase.im
-				                            -  2. * Product[jExp][iNuFlav][jNuFlav].re * Product[iExp][iNuFlav][jNuFlav].im * SPhase.im;
+				    Prob[jNuFlav][iNuFlav] +=  2. * Product[jExp][iNuFlav][jNuFlav].re * Product[iExp][iNuFlav][jNuFlav].re * totalLenShiftFactor[iExp][jExp][jNuFlav].re
+				                            +  2. * Product[jExp][iNuFlav][jNuFlav].im * Product[iExp][iNuFlav][jNuFlav].im * totalLenShiftFactor[iExp][jExp][jNuFlav].re
+				                            +  2. * Product[jExp][iNuFlav][jNuFlav].im * Product[iExp][iNuFlav][jNuFlav].re * totalLenShiftFactor[iExp][jExp][jNuFlav].im
+				                            -  2. * Product[jExp][iNuFlav][jNuFlav].re * Product[iExp][iNuFlav][jNuFlav].im * totalLenShiftFactor[iExp][jExp][jNuFlav].im;
 				  }
 			      }
 			  }
