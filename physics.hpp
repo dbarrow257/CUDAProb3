@@ -37,14 +37,14 @@ along with CUDAProb3++.  If not, see <http://www.gnu.org/licenses/>.
  * template<typename FLOAT_T>
  * __host__ __device__
  * void calculate(NeutrinoType type, const FLOAT_T* const cosinelist, int n_cosines, const FLOAT_T* const energylist, int n_energies,
- *                       const FLOAT_T* const radii, const FLOAT_T* const rhos, const FLOAT_T* const yps, const int* const maxlayers, FLOAT_T ProductionHeightinCentimeter, FLOAT_T* const result)
+ *                       const FLOAT_T* const radii, const FLOAT_T* const rhos, const int* const maxlayers, FLOAT_T ProductionHeightinCentimeter, FLOAT_T* const result)
  *
  * It can either be called directly on the CPU, or on the GPU via kernel
  *
  * template<typename FLOAT_T>
  * __global__
  * void calculateKernel(NeutrinoType type, const FLOAT_T* const cosinelist, int n_cosines, const FLOAT_T* const energylist, int n_energies,
- *                       const FLOAT_T* const radii, const FLOAT_T* const rhos, const FLOAT_T* const yps, const int* const maxlayers, FLOAT_T ProductionHeightinCentimeter, FLOAT_T* const result)
+ *                       const FLOAT_T* const radii, const FLOAT_T* const rhos, const int* const maxlayers, FLOAT_T ProductionHeightinCentimeter, FLOAT_T* const result)
  *
  *
  * Both host and device code is combined in function void calculate(..), such that only one function has to be maintained for host and device.
@@ -631,7 +631,7 @@ namespace cudaprob3{
             */
             template<typename FLOAT_T>
             HOSTDEVICEQUALIFIER
-            FLOAT_T getDensityOfLayer(const FLOAT_T* const rhos, const FLOAT_T* const yps, int layer, int max_layer){
+            FLOAT_T getDensityOfLayer(const FLOAT_T* const rhos,  int layer, int max_layer){
                 if(layer == 0) return 0.0;
                 int i;
                 if(layer <= max_layer){
@@ -640,7 +640,7 @@ namespace cudaprob3{
                     i = 2 * max_layer - layer - 1;
                 }
 
-                return rhos[i]*yps[i];
+                return rhos[i];
             }
 
             /*
@@ -686,7 +686,6 @@ namespace cudaprob3{
 			 const FLOAT_T* const productionHeight_binedges_list, // 21 (BinEdges) in cm
 			 const FLOAT_T* const radii,
 			 const FLOAT_T* const rhos,
-			 const FLOAT_T* const yps,
 			 const int* const maxlayers,
 			 FLOAT_T* const result){
 	    
@@ -844,7 +843,7 @@ namespace cudaprob3{
 		    // loop from vacuum layer to innermost crossed layer
 		    for (int iLayer=0;iLayer<=MaxLayer;iLayer++){
 		      const FLOAT_T distance = getTraversedDistanceOfLayer(radii, iLayer, MaxLayer, PathLength, TotalEarthLength, cosine_zenith);
-		      const FLOAT_T density = getDensityOfLayer(rhos, yps, iLayer, MaxLayer);
+		      const FLOAT_T density = getDensityOfLayer(rhos, iLayer, MaxLayer);
 		     
 		      /*
 		      //DB Uncomment for debugging get_transition_matrix against get_transition_matrix_expansion
@@ -1138,11 +1137,10 @@ namespace cudaprob3{
 				const FLOAT_T* const productionHeight_binedges_list,
                                 const FLOAT_T* const radii,
                                 const FLOAT_T* const rhos,
-                                const FLOAT_T* const yps,
                                 const int* const maxlayers,
                                 FLOAT_T* const result){
 
-		  calculate(type, cosinelist, n_cosines, energylist, n_energies, productionHeight_prob_list, productionHeight_binedges_list, radii, rhos, yps, maxlayers, result);
+		  calculate(type, cosinelist, n_cosines, energylist, n_energies, productionHeight_prob_list, productionHeight_binedges_list, radii, rhos, maxlayers, result);
             }
 
             template<typename FLOAT_T>
@@ -1158,13 +1156,12 @@ namespace cudaprob3{
 		                        const FLOAT_T* const productionHeight_binedges_list,
                                         const FLOAT_T* const radii,
                                         const FLOAT_T* const rhos,
-                                        const FLOAT_T* const yps,
                                         const int* const maxlayers,
                                         FLOAT_T* const result){
 
                 prepare_getMfast<FLOAT_T>(type);
 
-                calculateKernel<FLOAT_T><<<grid, block, 0, stream>>>(type, cosinelist, n_cosines, energylist, n_energies, productionHeight_prob_list, productionHeight_binedges_list, radii, rhos, yps, maxlayers, result);
+                calculateKernel<FLOAT_T><<<grid, block, 0, stream>>>(type, cosinelist, n_cosines, energylist, n_energies, productionHeight_prob_list, productionHeight_binedges_list, radii, rhos, maxlayers, result);
                 CUERR;
             }
             #endif
