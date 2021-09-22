@@ -1020,8 +1020,15 @@ namespace cudaprob3{
 			      
 			      UNROLLQUALIFIER
 			      for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) { //In flav
-				totalLenShiftFactor[ieig0][jeig0][iNuFlav].re += sinc_exp_factor.re + sinc_exp_factor.re; //DB Add probability weights into here
-				totalLenShiftFactor[ieig0][jeig0][iNuFlav].im += sinc_exp_factor.im - sinc_exp_factor.im; //DB Add probability weights into here
+
+				int ProbIndex = type*nNuFlav*n_energies*n_cosines*NPRODHEIGHTBINS + iNuFlav*n_energies*n_cosines*NPRODHEIGHTBINS
+				                + index_energy*n_cosines*NPRODHEIGHTBINS + index_cosine*NPRODHEIGHTBINS + iPathLength;
+
+				totalLenShiftFactor[ieig0][jeig0][iNuFlav].re += productionHeight_prob_list[ProbIndex] * sinc_exp_factor.re;
+				totalLenShiftFactor[ieig0][jeig0][iNuFlav].im += productionHeight_prob_list[ProbIndex] * sinc_exp_factor.im;
+
+				totalLenShiftFactor[jeig0][ieig0][iNuFlav].re += productionHeight_prob_list[ProbIndex] * sinc_exp_factor.re;
+				totalLenShiftFactor[jeig0][ieig0][iNuFlav].im -= productionHeight_prob_list[ProbIndex] * sinc_exp_factor.re;
 			      }
 			    }
 			}
