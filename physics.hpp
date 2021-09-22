@@ -1028,7 +1028,7 @@ namespace cudaprob3{
 				totalLenShiftFactor[ieig0][jeig0][iNuFlav].im += productionHeight_prob_list[ProbIndex] * sinc_exp_factor.im;
 
 				totalLenShiftFactor[jeig0][ieig0][iNuFlav].re += productionHeight_prob_list[ProbIndex] * sinc_exp_factor.re;
-				totalLenShiftFactor[jeig0][ieig0][iNuFlav].im -= productionHeight_prob_list[ProbIndex] * sinc_exp_factor.re;
+				totalLenShiftFactor[jeig0][ieig0][iNuFlav].im -= productionHeight_prob_list[ProbIndex] * sinc_exp_factor.im;
 			      }
 			    }
 			}
