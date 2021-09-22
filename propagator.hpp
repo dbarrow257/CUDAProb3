@@ -177,8 +177,7 @@ namespace cudaprob3{
             std::vector<FLOAT_T> rhos;
             FLOAT_T r;
             FLOAT_T d;
-	    FLOAT_T yp;
-            while (file >> r >> d >> yp){
+            while (file >> r >> d){
                 radii.push_back(r);
                 rhos.push_back(d);
             }
