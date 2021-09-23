@@ -712,13 +712,14 @@ namespace cudaprob3{
 		
 		const FLOAT_T cosine_zenith = cosinelist[index_cosine];
 		
-		bool useProductionHeightAveraging = false;
+		bool useProductionHeightAveraging = true;
 
 		const int iLayerAtm = 0;
 		const FLOAT_T TotalEarthLength =  -2.0*cosine_zenith*Constants<FLOAT_T>::REarthcm(); // in [cm]
 		const int MaxLayer = maxlayers[index_cosine];
 
 		const int nExp = 3;
+		const int nEig = 3;
 		const int nNuFlav = 3;
 
 		FLOAT_T phaseOffset = 0.;
@@ -972,13 +973,13 @@ x		      }
 		    //DB Set unit matrix
 		    if (useProductionHeightAveraging) {
 		      UNROLLQUALIFIER
-			for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
+			for (int iEig0=0;iEig0<nEig;iEig0++) {
 			  UNROLLQUALIFIER
-			    for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++) {
+			    for (int jEig0=0;jEig0<nEig;jEig0++) {
 			      UNROLLQUALIFIER
-				for (int iExp=0;iExp<nExp;iExp++) {
-				  totalLenShiftFactor[iNuFlav][jNuFlav][iExp].re = (iNuFlav == jNuFlav ? 1.0 : 0.0);
-				  totalLenShiftFactor[iNuFlav][jNuFlav][iExp].im = 0.;
+				for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
+				  totalLenShiftFactor[iEig0][jEig0][iNuFlav].re = (iEig0 == jEig0 ? 1.0 : 0.0);
+				  totalLenShiftFactor[iEig0][jEig0][iNuFlav].im = 0.;
 				}
 			    }
 			}
@@ -991,10 +992,10 @@ x		      }
 			  FLOAT_T hw = (h1-h0);
 			  
 			  UNROLLQUALIFIER
-			    for (int ieig0=0;ieig0<nNuFlav;ieig0++) { 
+			    for (int iEig0=0;iEig0<nEig;iEig0++) { 
 			      UNROLLQUALIFIER
-				for (int jeig0=0;jeig0<ieig0;jeig0++) { 
-				  FLOAT_T darg_distance = darg0_ddistance[ieig0]-darg0_ddistance[jeig0];
+				for (int jEig0=0;jEig0<iEig0;jEig0++) { 
+				  FLOAT_T darg_distance = darg0_ddistance[iEig0]-darg0_ddistance[jEig0];
 				  
 				  //factor.re = 0
 				  //factor.im = darg_distance*hm
@@ -1017,24 +1018,24 @@ x		      }
 				      int ProbIndex = type*nNuFlav*n_energies*n_cosines*NPRODHEIGHTBINS + iNuFlav*n_energies*n_cosines*NPRODHEIGHTBINS
 					+ index_energy*n_cosines*NPRODHEIGHTBINS + index_cosine*NPRODHEIGHTBINS + iPathLength;
 				      
-				      totalLenShiftFactor[ieig0][jeig0][iNuFlav].re += productionHeight_prob_list[ProbIndex] * sinc_exp_factor.re;
-				      totalLenShiftFactor[ieig0][jeig0][iNuFlav].im += productionHeight_prob_list[ProbIndex] * sinc_exp_factor.im;
+				      totalLenShiftFactor[iEig0][jEig0][iNuFlav].re += productionHeight_prob_list[ProbIndex] * sinc_exp_factor.re;
+				      totalLenShiftFactor[iEig0][jEig0][iNuFlav].im += productionHeight_prob_list[ProbIndex] * sinc_exp_factor.im;
 				      
-				      totalLenShiftFactor[jeig0][ieig0][iNuFlav].re += productionHeight_prob_list[ProbIndex] * sinc_exp_factor.re;
-				      totalLenShiftFactor[jeig0][ieig0][iNuFlav].im += productionHeight_prob_list[ProbIndex] * sinc_exp_factor.im;
+				      totalLenShiftFactor[jEig0][iEig0][iNuFlav].re += productionHeight_prob_list[ProbIndex] * sinc_exp_factor.re;
+				      totalLenShiftFactor[jEig0][iEig0][iNuFlav].im -= productionHeight_prob_list[ProbIndex] * sinc_exp_factor.im;
 				    }
 				}
 			    }
 			}
 		    } else {
 		      UNROLLQUALIFIER
-			for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
+			for (int iEig0=0;iEig0<nEig;iEig0++) {
 			  UNROLLQUALIFIER
-			    for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++) {
+			    for (int jEig0=0;jEig0<iEig0;jEig0++) {
 			      UNROLLQUALIFIER
-				for (int iExp=0;iExp<nExp;iExp++) {
-				  totalLenShiftFactor[iNuFlav][jNuFlav][iExp].re = 1.0;
-				  totalLenShiftFactor[iNuFlav][jNuFlav][iExp].im = 0.;
+				for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
+				  totalLenShiftFactor[iEig0][jEig0][iNuFlav].re = 1.0;
+				  totalLenShiftFactor[iEig0][jEig0][iNuFlav].im = 0.;
 				}
 			    }
 			}
