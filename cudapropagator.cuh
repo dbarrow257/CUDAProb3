@@ -165,7 +165,7 @@ namespace cudaprob3{
 	    Propagator<FLOAT_T>::setProductionHeightList(list_prob, list_bins); //set host production height list
 
 	    cudaMemcpy(d_productionHeight_prob_list.get(), this->productionHeightList_prob.data(), sizeof(FLOAT_T)*NPRODHEIGHTBINS*2*3*this->n_energies*this->n_cosines, H2D); CUERR;
-	    cudaMemcpy(d_productionHeight_bins_list.get(), this->productionHeightList_bins.data(), sizeof(FLOAT_T)*NPRODHEIGHTBINS+1, H2D); CUERR;
+	    cudaMemcpy(d_productionHeight_bins_list.get(), this->productionHeightList_bins.data(), sizeof(FLOAT_T)*(NPRODHEIGHTBINS+1), H2D); CUERR;
 	}
 
         // calculate the probability of each cell
