@@ -41,17 +41,6 @@ namespace cudaprob3{
         constexpr T ct_cube(T x){
             return x * x * x;
         }
-
-
-      template<typename FLOAT_T>
-      HOSTDEVICEQUALIFIER
-      FLOAT_T defined_sinc(FLOAT_T A) {
-	if (abs(A) >= EPSILON) {
-	  return sin(A)/A;
-	} else {
-	  return FLOAT_T(1) - A*A/6. + A*A*A*A/120.;
-	}
-      }
       
       /*
        *   multiply complex 3x3 matrix
@@ -73,6 +62,16 @@ namespace cudaprob3{
 	}
       }
       
+      template<typename FLOAT_T>
+      HOSTDEVICEQUALIFIER
+      FLOAT_T defined_sinc(FLOAT_T A) {
+	if (abs(A) >= EPSILON) {
+	  return sin(A)/A;
+	} else {
+	  return FLOAT_T(1) - A*A/6. + A*A*A*A/120.;
+	}
+      }
+
       template<typename FLOAT_T>
       HOSTDEVICEQUALIFIER
       void multiply_phase_matrix(FLOAT_T Phase, ComplexNumber<FLOAT_T> A[][3], ComplexNumber<FLOAT_T> B[][3]) {
