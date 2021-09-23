@@ -27,7 +27,7 @@ along with CUDAProb3++.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include <assert.h>
 #include <omp.h>
-#include <complex.h>
+
 
 /*
  * This file contains the Barger et al physics which are used by Prob3++ to compute oscillation probabilities.
