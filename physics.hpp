@@ -443,7 +443,6 @@ namespace cudaprob3{
 	      get_product(L, E, rho, d_dmMatVac, d_dmMatMat, type, product);
 	    }
 	    
-	    
 	    /* Make the sum with the exponential factor in Eq. (11) */
 	    //memset(X, 0, 3*3*sizeof(math::ComplexNumber<FLOAT_T>));
 	    UNROLLQUALIFIER
