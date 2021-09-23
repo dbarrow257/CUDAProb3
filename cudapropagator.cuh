@@ -30,6 +30,7 @@ along with CUDAProb3++.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include <vector>
 
+
 namespace cudaprob3{
 
     /// \class CudaPropagatorSingle

@@ -31,6 +31,8 @@ along with CUDAProb3++.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <cmath>
 
+
+
 namespace cudaprob3{
 
 
@@ -374,7 +376,6 @@ namespace cudaprob3{
 
         int n_cosines;
         int n_energies;
-
     };
 
 
