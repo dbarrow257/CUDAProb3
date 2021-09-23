@@ -682,11 +682,12 @@ namespace cudaprob3{
 			 int n_cosines,
 			 const FLOAT_T* const energylist,
 			 int n_energies,
-			 const FLOAT_T* const productionHeight_prob_list, // 20 (nBins) * 2 (nu,nubar) * 3 (e,mu,tau) * n_energies * n_cosines
-			 const FLOAT_T* const productionHeight_binedges_list, // 21 (BinEdges) in cm
 			 const FLOAT_T* const radii,
 			 const FLOAT_T* const rhos,
 			 const int* const maxlayers,
+			 FLOAT_T ProductionHeightinCentimeter,
+			 const FLOAT_T* const productionHeight_prob_list, // 20 (nBins) * 2 (nu,nubar) * 3 (e,mu,tau) * n_energies * n_cosines
+			 const FLOAT_T* const productionHeight_binedges_list, // 21 (BinEdges) in cm
 			 FLOAT_T* const result){
 
             //prepare more constant data. For the kernel, this is done by the wrapper function callCalculateKernelAsync
@@ -810,8 +811,6 @@ namespace cudaprob3{
 
 		    //============================================================================================================
 		    //DB Calculate Path Lengths for given production heights
-
-		    const FLOAT_T ProductionHeightinCentimeter = 2500000.0; //DB 25km in cm - Need to calculate weighted average instead of dummy value		    
 
 		    //DB PathLength is used to calculate the distance traversed
 		    const FLOAT_T PathLength = sqrt((Constants<FLOAT_T>::REarthcm() + ProductionHeightinCentimeter )*(Constants<FLOAT_T>::REarthcm() + ProductionHeightinCentimeter)
@@ -1133,14 +1132,15 @@ namespace cudaprob3{
                                 int n_cosines,
                                 const FLOAT_T* const energylist,
                                 int n_energies,
-				const FLOAT_T* const productionHeight_prob_list,
-				const FLOAT_T* const productionHeight_binedges_list,
                                 const FLOAT_T* const radii,
                                 const FLOAT_T* const rhos,
                                 const int* const maxlayers,
+				FLOAT_T ProductionHeightinCentimeter,
+				const FLOAT_T* const productionHeight_prob_list,
+				const FLOAT_T* const productionHeight_binedges_list,
                                 FLOAT_T* const result){
 
-		  calculate(type, cosinelist, n_cosines, energylist, n_energies, productionHeight_prob_list, productionHeight_binedges_list, radii, rhos, maxlayers, result);
+	      calculate(type, cosinelist, n_cosines, energylist, n_energies, radii, rhos, maxlayers, ProductionHeightinCentimeter, productionHeight_prob_list, productionHeight_binedges_list, result);
             }
 
             template<typename FLOAT_T>
@@ -1152,16 +1152,17 @@ namespace cudaprob3{
                                         int n_cosines,
                                         const FLOAT_T* const energylist,
                                         int n_energies,
-		                        const FLOAT_T* const productionHeight_prob_list,
-		                        const FLOAT_T* const productionHeight_binedges_list,
                                         const FLOAT_T* const radii,
                                         const FLOAT_T* const rhos,
-                                        const int* const maxlayers,
+					const int* const maxlayers,
+				        FLOAT_T ProductionHeightinCentimeter,
+		                        const FLOAT_T* const productionHeight_prob_list,
+		                        const FLOAT_T* const productionHeight_binedges_list,
                                         FLOAT_T* const result){
 
                 prepare_getMfast<FLOAT_T>(type);
 
-                calculateKernel<FLOAT_T><<<grid, block, 0, stream>>>(type, cosinelist, n_cosines, energylist, n_energies, productionHeight_prob_list, productionHeight_binedges_list, radii, rhos, maxlayers, result);
+                calculateKernel<FLOAT_T><<<grid, block, 0, stream>>>(type, cosinelist, n_cosines, energylist, n_energies, radii, rhos, maxlayers, ProductionHeightinCentimeter, productionHeight_prob_list, productionHeight_binedges_list,  result);
                 CUERR;
             }
             #endif

@@ -247,10 +247,11 @@ namespace cudaprob3{
                             type,
                             d_cosine_list.get(), this->n_cosines,
                             d_energy_list.get(), this->n_energies,
-			    d_productionHeight_prob_list.get(),
-			    d_productionHeight_bins_list.get(),
                             d_radii.get(), d_rhos.get(),
                             d_maxlayers.get(),
+			    this->ProductionHeightinCentimeter,
+			    d_productionHeight_prob_list.get(),
+			    d_productionHeight_bins_list.get(),
                             d_result_list.get());
 
             CUERR;

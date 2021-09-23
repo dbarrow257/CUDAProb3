@@ -93,7 +93,7 @@ namespace cudaprob3{
             physics::setMassDifferences_host(this->dm.data());
 
             physics::calculate(type, this->cosineList.data(), this->cosineList.size(),
-			       this->energyList.data(), this->energyList.size(), this->productionHeightList_prob.data(), this->productionHeightList_bins.data(), this->radii.data(), this->rhos.data(), this->maxlayers.data(), resultList.data());
+			       this->energyList.data(), this->energyList.size(), this->radii.data(), this->rhos.data(), this->maxlayers.data(), this->ProductionHeightinCentimeter, this->productionHeightList_prob.data(), this->productionHeightList_bins.data(), resultList.data());
         }
 
         FLOAT_T getProbability(int index_cosine, int index_energy, ProbType t) override{
