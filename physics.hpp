@@ -21,6 +21,7 @@ along with CUDAProb3++.  If not, see <http://www.gnu.org/licenses/>.
 #include "constants.hpp"
 #include "math.hpp"
 
+#include <iomanip>
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
@@ -841,6 +842,10 @@ namespace cudaprob3{
 					    phaseOffset
 					    );
 
+		      for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
+			clear_complex_matrix(ExpansionMatrix[iLayer][iNuFlav]);
+		      }
+
 		      get_transition_matrix_expansion(type,
 						      energy,
 						      density,
@@ -856,6 +861,13 @@ namespace cudaprob3{
 		      for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
 			multiply_phase_matrix(arg[iLayer][iNuFlav],ExpansionMatrix[iLayer][iNuFlav],TransitionMatrix);
 		      }
+
+		      for (int i=0;i<3;i++) {
+			for (int j=0;j<3;j++) {
+			  std::cout << "Layer:" << std::setw(5) << iLayer << " | i:" << i << " | j:" << j << " | TransitionMatrix[i][j].re:" << std::setw(10) << TransitionMatrix[i][j].re << " | TransitionMatrix[i][j].im:" << std::setw(10) << TransitionMatrix[i][j].im << std::endl;
+			}
+		      }
+
 		      
 		      //DB Uncomment for debugging get_transition_matrix against get_transition_matrix_expansion
 		      for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
@@ -959,6 +971,20 @@ namespace cudaprob3{
 		    multiply_complex_matrix( TransitionMatrixCoreToMantle, finalTransitionMatrix, TransitionTemp );
 		    copy_complex_matrix( TransitionTemp, finalTransitionMatrix );
 
+
+		    for (int i=0;i<3;i++) {
+		      for (int j=0;j<3;j++) {
+			std::cout << "i:" << i << " | j:" << j << " | finalTransitionMatrix[i][j].re:" << std::setw(10) << finalTransitionMatrix[i][j].re << " | finalTransitionMatrix[i][j].im:" << std::setw(10) << finalTransitionMatrix[i][j].im << std::endl;
+		      }
+		    }
+		    for (int i=0;i<3;i++) {
+		      for (int j=0;j<3;j++) {
+			std::cout << "i:" << i << " | j:" << j << " | TransitionMatrixCoreToMantle[i][j].re:" << std::setw(10) << TransitionMatrixCoreToMantle[i][j].re << " | TransitionMatrixCoreToMantle[i][j].im:" << std::setw(10) << TransitionMatrixCoreToMantle[i][j].im << std::endl;
+		      }
+		    }
+
+		    throw;
+
 		    //============================================================================================================
 		    //DB Calculate totalLenShiftFactors using atmospheric layer
 		    
@@ -1030,7 +1056,6 @@ namespace cudaprob3{
 		    //============================================================================================================
 		    //DB Calculate Probability from finalTransitionMatrix
 
-		    /*
 		    UNROLLQUALIFIER
 		      for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) { //Flavour after osc
 			UNROLLQUALIFIER
@@ -1038,8 +1063,8 @@ namespace cudaprob3{
 			    Prob[jNuFlav][iNuFlav] += finalTransitionMatrix[jNuFlav][iNuFlav].re * finalTransitionMatrix[jNuFlav][iNuFlav].re + finalTransitionMatrix[jNuFlav][iNuFlav].im * finalTransitionMatrix[jNuFlav][iNuFlav].im;
 			  }
 		      }
-		    */
 
+		    /*
 		    //DB B[iExp]       = A(layer = nLayers-1)  * C(layer=0)[iExp]
 		    //   Product[iExp] = finalTransitionMatrix * ExpansionMatrix[iLayerAtm][iExp]
 		    //
@@ -1078,6 +1103,7 @@ namespace cudaprob3{
 			  }
 		      }
 		    //To here
+		    */
 
 		    //============================================================================================================
 		    //DB Fill Arrays
