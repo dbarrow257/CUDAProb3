@@ -736,8 +736,10 @@ namespace cudaprob3{
 		math::ComplexNumber<FLOAT_T> ExpansionMatrix[nMaxLayers][nExp][nNuFlav][nNuFlav];
 		FLOAT_T arg[nMaxLayers][nNuFlav];
 
+		/*
 		// DB Uncomment for debugging get_transition_matrix against get_transition_matrix_expansion
 		math::ComplexNumber<FLOAT_T> TransitionMatrix_getA[nNuFlav][nNuFlav];
+		*/
 
 		FLOAT_T Prob[nNuFlav][nNuFlav];
 
@@ -757,11 +759,13 @@ namespace cudaprob3{
 		    //============================================================================================================
 		    //DB Reset all the values
 
+		    /*
 		    for (int iLayer=0;iLayer<nMaxLayers;iLayer++) {
 		      for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
 			clear_complex_matrix(ExpansionMatrix[iLayer][iNuFlav]);
-		      }
+x		      }
 		    }
+		    */
 
 		    UNROLLQUALIFIER
 		      for (int iLayer=0;iLayer<nMaxLayers;iLayer++) {
@@ -779,10 +783,12 @@ namespace cudaprob3{
 			  }
 		      }
 		    
+		    /*
 		    UNROLLQUALIFIER
 		    for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
 		      darg0_ddistance[iNuFlav] = 0.;
 		    }
+		    */
 
 		    for (int iExp=0;iExp<nExp;iExp++) {
 		      clear_complex_matrix(Product[iExp]);
@@ -833,6 +839,7 @@ namespace cudaprob3{
 		      const FLOAT_T distance = getTraversedDistanceOfLayer(radii, iLayer, MaxLayer, PathLength, TotalEarthLength, cosine_zenith);
 		      const FLOAT_T density = getDensityOfLayer(rhos, iLayer, MaxLayer);
 		     
+		      /*
 		      //DB Uncomment for debugging get_transition_matrix against get_transition_matrix_expansion
 		      get_transition_matrix(type,
 					    energy,
@@ -841,10 +848,13 @@ namespace cudaprob3{
 					    TransitionMatrix_getA,
 					    phaseOffset
 					    );
+		      */
 
+		      /*
 		      for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
 			clear_complex_matrix(ExpansionMatrix[iLayer][iNuFlav]);
 		      }
+		      */
 
 		      get_transition_matrix_expansion(type,
 						      energy,
@@ -861,20 +871,8 @@ namespace cudaprob3{
 		      for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
 			multiply_phase_matrix(arg[iLayer][iNuFlav],ExpansionMatrix[iLayer][iNuFlav],TransitionMatrix);
 		      }
-
-		      /*
-		      std::cout << "type:" << type << std::endl;
-		      std::cout << "energy:" << energy <<std::endl;
-		      std::cout << "density * Constants<FLOAT_T>::density_convert():" << density * Constants<FLOAT_T>::density_convert() << std::endl;
-		      std::cout << "distance / Constants<FLOAT_T>::km2cm():" << distance / Constants<FLOAT_T>::km2cm() <<std::endl;
-		      for (int i=0;i<3;i++) {
-			for (int j=0;j<3;j++) {
-			  std::cout << "Layer:" << std::setw(5) << iLayer << " | i:" << i << " | j:" << j << " | TransitionMatrix[i][j].re:" << std::setw(10) << TransitionMatrix[i][j].re << " | TransitionMatrix[i][j].im:" << std::setw(10) << TransitionMatrix[i][j].im << std::endl;
-			}
-		      }
-		      */
-
 		      
+		      /*
 		      //DB Uncomment for debugging get_transition_matrix against get_transition_matrix_expansion
 		      for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
 			for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++) {
@@ -940,6 +938,7 @@ namespace cudaprob3{
 			  }
 			}
 		      }
+		      */
 
 		      if (iLayer == iLayerAtm) { // atmosphere
 
@@ -970,35 +969,12 @@ namespace cudaprob3{
 			copy_complex_matrix( TransitionTemp, finalTransitionMatrix );
 		      }
 
-		      /*
-		      for (int i=0;i<3;i++) {
-			for (int j=0;j<3;j++) {
-			  std::cout << "Layer:" << std::setw(5) << iLayer << " | i:" << i << " | j:" << j << " | finalTransitionMatrix[i][j].re:" << std::setw(10) << finalTransitionMatrix[i][j].re << " | finalTransitionMatrix[i][j].im:" << std::setw(10) << finalTransitionMatrix[i][j].im << std::endl;
-			}
-		      }
-		      */
-
 		    }
 		    
 		    // calculate final transition matrix
 		    clear_complex_matrix( TransitionTemp );
 		    multiply_complex_matrix( TransitionMatrixCoreToMantle, finalTransitionMatrix, TransitionTemp );
 		    copy_complex_matrix( TransitionTemp, finalTransitionMatrix );
-
-		    /*
-		    for (int i=0;i<3;i++) {
-		      for (int j=0;j<3;j++) {
-			std::cout << "i:" << i << " | j:" << j << " | finalTransitionMatrix[i][j].re:" << std::setw(10) << finalTransitionMatrix[i][j].re << " | finalTransitionMatrix[i][j].im:" << std::setw(10) << finalTransitionMatrix[i][j].im << std::endl;
-		      }
-		    }
-		    for (int i=0;i<3;i++) {
-		      for (int j=0;j<3;j++) {
-			std::cout << "i:" << i << " | j:" << j << " | TransitionMatrixCoreToMantle[i][j].re:" << std::setw(10) << TransitionMatrixCoreToMantle[i][j].re << " | TransitionMatrixCoreToMantle[i][j].im:" << std::setw(10) << TransitionMatrixCoreToMantle[i][j].im << std::endl;
-		      }
-		    }
-		    throw;
-
-		    */
 
 		    //============================================================================================================
 		    //DB Calculate totalLenShiftFactors using atmospheric layer
@@ -1037,26 +1013,6 @@ namespace cudaprob3{
 				    
 				    int ProbIndex = type*nNuFlav*n_energies*n_cosines*NPRODHEIGHTBINS + iNuFlav*n_energies*n_cosines*NPRODHEIGHTBINS
 				      + index_energy*n_cosines*NPRODHEIGHTBINS + index_cosine*NPRODHEIGHTBINS + iPathLength;
-				    
-				    /*
-				    //Temporary debug : 0.05 = 1.0/20 bins
-				    if (productionHeight_prob_list[ProbIndex] != 0.05) {
-				      std::cout << "Probability:" << productionHeight_prob_list[ProbIndex] << std::endl;
-				      std::cout << "Index:" << ProbIndex << std::endl;
-				      
-				      std::cout << "type:" << type << std::endl;
-				      std::cout << "iNuFlav:" << iNuFlav << std::endl;
-				      std::cout << "index_energy:" << index_energy << std::endl;
-				      std::cout << "index_cosine:" << index_cosine << std::endl;
-				      std::cout << "iPathLength:" << iPathLength << std::endl;
-				      std::cout << "NPRODHEIGHTBINS:" << NPRODHEIGHTBINS << std::endl;
-				      
-				      
-				      std::cout << "nNuFlav:" << nNuFlav << std::endl;
-				      
-				      throw;
-				    }
-				    */
 
 				    totalLenShiftFactor[ieig0][jeig0][iNuFlav].re += productionHeight_prob_list[ProbIndex] * sinc_exp_factor.re;
 				    totalLenShiftFactor[ieig0][jeig0][iNuFlav].im += productionHeight_prob_list[ProbIndex] * sinc_exp_factor.im;
