@@ -1027,6 +1027,8 @@ x		      }
 		    //============================================================================================================
 		    //DB Calculate Probability from finalTransitionMatrix
 
+		    /*
+		    //DB This code gives identical results to unmodified CUDAProb3
 		    UNROLLQUALIFIER
 		      for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) { //Flavour after osc
 			UNROLLQUALIFIER
@@ -1034,8 +1036,8 @@ x		      }
 			    Prob[jNuFlav][iNuFlav] += finalTransitionMatrix[jNuFlav][iNuFlav].re * finalTransitionMatrix[jNuFlav][iNuFlav].re + finalTransitionMatrix[jNuFlav][iNuFlav].im * finalTransitionMatrix[jNuFlav][iNuFlav].im;
 			  }
 		      }
+		    */
 
-		    /*
 		    //DB B[iExp]       = A(layer = nLayers-1)  * C(layer=0)[iExp]
 		    //   Product[iExp] = finalTransitionMatrix * ExpansionMatrix[iLayerAtm][iExp]
 		    //
@@ -1074,7 +1076,6 @@ x		      }
 			  }
 		      }
 		    //To here
-		    */
 
 		    //============================================================================================================
 		    //DB Fill Arrays
