@@ -684,7 +684,9 @@ namespace cudaprob3{
 			 const FLOAT_T* const productionHeight_prob_list, // 20 (nBins) * 2 (nu,nubar) * 3 (e,mu,tau) * n_energies * n_cosines
 			 const FLOAT_T* const productionHeight_binedges_list, // 21 (BinEdges) in cm
 			 FLOAT_T* const result){
-
+			 FLOAT_T* const result){
+	    
+>>>>>>> origin/develop
             //prepare more constant data. For the kernel, this is done by the wrapper function callCalculateKernelAsync
 #ifndef __CUDA_ARCH__
 	    prepare_getMfast<FLOAT_T>(type);
@@ -746,7 +748,6 @@ namespace cudaprob3{
 #else
 		  if(index_energy < n_energies){
 #endif
-
 		    const FLOAT_T energy = energylist[index_energy];
 		    		    
 		    //============================================================================================================
