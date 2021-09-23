@@ -41,41 +41,21 @@ namespace cudaprob3{
         constexpr T ct_cube(T x){
             return x * x * x;
         }
-      
-      /*
-       *   multiply complex 3x3 matrix
-       *        C = A X B
-       */
-      template<typename FLOAT_T>
-      HOSTDEVICEQUALIFIER
-        void multiply_complex_matrix(ComplexNumber<FLOAT_T> A[][3], ComplexNumber<FLOAT_T> B[][3], ComplexNumber<FLOAT_T> C[][3]){
-	
-	for (int i=0; i<3; i++) {
-	  
-	  for (int j=0; j<3; j++) {
-	    
-	    for (int k=0; k<3; k++) {
-	      C[i][j].re += A[i][k].re*B[k][j].re-A[i][k].im*B[k][j].im;
-	      C[i][j].im += A[i][k].im*B[k][j].re+A[i][k].re*B[k][j].im;
-	    }
+
+        template<typename FLOAT_T>
+	HOSTDEVICEQUALIFIER
+	FLOAT_T defined_sinc(FLOAT_T A) {
+	  if (abs(A) >= EPSILON) {
+	    return sin(A)/A;
+	  } else {
+	    return FLOAT_T(1) - A*A/6. + A*A*A*A/120.;
 	  }
 	}
-      }
       
-      template<typename FLOAT_T>
-      HOSTDEVICEQUALIFIER
-      FLOAT_T defined_sinc(FLOAT_T A) {
-	if (abs(A) >= EPSILON) {
-	  return sin(A)/A;
-	} else {
-	  return FLOAT_T(1) - A*A/6. + A*A*A*A/120.;
-	}
-      }
-
-      template<typename FLOAT_T>
-      HOSTDEVICEQUALIFIER
-      void multiply_phase_matrix(FLOAT_T Phase, ComplexNumber<FLOAT_T> A[][3], ComplexNumber<FLOAT_T> B[][3]) {
-
+        template<typename FLOAT_T>
+	HOSTDEVICEQUALIFIER
+	void multiply_phase_matrix(FLOAT_T Phase, ComplexNumber<FLOAT_T> A[][3], ComplexNumber<FLOAT_T> B[][3]) {
+	  
 #ifdef __CUDACC__
 	  FLOAT_T c,s;
 	  sincos(Phase, &s, &c);
@@ -91,6 +71,27 @@ namespace cudaprob3{
 	    }
 	  }
 	}
+
+
+        /*
+        *   multiply complex 3x3 matrix
+        *        C = A X B
+        */
+        template<typename FLOAT_T>
+        HOSTDEVICEQUALIFIER
+        void multiply_complex_matrix(ComplexNumber<FLOAT_T> A[][3], ComplexNumber<FLOAT_T> B[][3], ComplexNumber<FLOAT_T> C[][3]){
+
+            for (int i=0; i<3; i++) {
+
+                for (int j=0; j<3; j++) {
+
+                    for (int k=0; k<3; k++) {
+                        C[i][j].re += A[i][k].re*B[k][j].re-A[i][k].im*B[k][j].im;
+                        C[i][j].im += A[i][k].im*B[k][j].re+A[i][k].re*B[k][j].im;
+                    }
+                }
+            }
+        }
 
         /*
         *   multiply complex 3x3 matrix and 3 vector
