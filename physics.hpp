@@ -461,7 +461,7 @@ namespace cudaprob3{
 	      arg[k] = -LoEfac*dmMatVac[k][0]*L/E;
 	      if ( k==2 ) arg[k] += phase_offset ;
 	    }
-	  }	    
+	  }
 	  
 	  /***********************************************************************
   getC
@@ -517,6 +517,15 @@ namespace cudaprob3{
                     ImSum += RI_nk[j] * U(jNuFlav,j).re;
                     ImSum -= RR_nk[j] * U(jNuFlav,j).im;
                   }
+		
+                  C[iExp][iNuFlav][jNuFlav].re = ReSum;
+                  C[iExp][iNuFlav][jNuFlav].im = ImSum;
+
+                }
+              }
+            }
+	        
+          }
 
 	  template<typename FLOAT_T>
             HOSTDEVICEQUALIFIER
@@ -684,9 +693,7 @@ namespace cudaprob3{
 			 const FLOAT_T* const productionHeight_prob_list, // 20 (nBins) * 2 (nu,nubar) * 3 (e,mu,tau) * n_energies * n_cosines
 			 const FLOAT_T* const productionHeight_binedges_list, // 21 (BinEdges) in cm
 			 FLOAT_T* const result){
-			 FLOAT_T* const result){
 	    
->>>>>>> origin/develop
             //prepare more constant data. For the kernel, this is done by the wrapper function callCalculateKernelAsync
 #ifndef __CUDA_ARCH__
 	    prepare_getMfast<FLOAT_T>(type);
@@ -1105,8 +1112,7 @@ namespace cudaprob3{
 		  }
 		}
 	      }
-	      
-	      
+	  
             #ifdef __NVCC__
             template<typename FLOAT_T>
             KERNEL
@@ -1148,10 +1154,10 @@ namespace cudaprob3{
 
                 calculateKernel<FLOAT_T><<<grid, block, 0, stream>>>(type, cosinelist, n_cosines, energylist, n_energies, radii, rhos, maxlayers, ProductionHeightinCentimeter, productionHeight_prob_list, productionHeight_binedges_list,  result);
                 CUERR;
-            }
+	    }
             #endif
 
-        } // namespace physics
+	 }// namespace physics
 
 } // namespace cudaprob3
 
