@@ -428,20 +428,6 @@ namespace cudaprob3{
                     }
                 }
             }
-
-	  /*
-	   * Get 3x3 transition amplitude Aout for neutrino with energy E travelling Len kilometers through matter of constant density rho
-	   */
-	  template<typename FLOAT_T>
-	  HOSTDEVICEQUALIFIER
-	  void get_transition_matrix(NeutrinoType nutype, FLOAT_T Enu, FLOAT_T rho, FLOAT_T Len, math::ComplexNumber<FLOAT_T> Aout[3][3], FLOAT_T Arg[3], FLOAT_T phase_offset){
-	    
-	    FLOAT_T d_dmMatVac[3][3], d_dmMatMat[3][3];
-	    getMfast(Enu, rho, nutype, d_dmMatMat, d_dmMatVac);
-	    
-	    getArg(Len, Enu, d_dmMatVac, Arg, phase_offset);
-	    getA(Len, Enu, rho, d_dmMatVac, d_dmMatMat, nutype, phase_offset, Aout);
-	  }
 	  
 	  /***********************************************************************
   getArg
@@ -452,7 +438,7 @@ namespace cudaprob3{
 	  ***********************************************************************/
           template<typename FLOAT_T>
           HOSTDEVICEQUALIFIER
-	  void getArg(const FLOAT_T L, const FLOAT_T E, const FLOAT_T dmMatVac[][3], FLOAT_T arg[3], const FLOAT_T phase_offset) {
+	  void getArg(const FLOAT_T L, const FLOAT_T E, const FLOAT_T dmMatVac[][3], const FLOAT_T phase_offset, FLOAT_T arg[3]) {
 
 	    /* (1/2)*(1/(h_bar*c)) in units of GeV/(eV^2-km) */
 	    const FLOAT_T LoEfac = 2.534;
@@ -473,7 +459,7 @@ namespace cudaprob3{
           template<typename FLOAT_T>
           HOSTDEVICEQUALIFIER
           void getC(FLOAT_T E, FLOAT_T rho, FLOAT_T dmMatVac[][3], FLOAT_T dmMatMat[][3],
-		    cudaprob3::NeutrinoType type, math::ComplexNumber<FLOAT_T> C[3][3][3], FLOAT_T phase_offset) {
+		    cudaprob3::NeutrinoType type, FLOAT_T phase_offset, math::ComplexNumber<FLOAT_T> C[3][3][3]) {
 		    
 	    const int nExp = 3;
 	    const int nNuFlav = 3;
@@ -530,7 +516,7 @@ namespace cudaprob3{
 	  template<typename FLOAT_T>
             HOSTDEVICEQUALIFIER
 	    void getA(const FLOAT_T L, const FLOAT_T E, const FLOAT_T rho, const FLOAT_T d_dmMatVac[][3], const FLOAT_T d_dmMatMat[][3],
-		      const NeutrinoType type, math::ComplexNumber<FLOAT_T> A[3][3], const FLOAT_T phase_offset){
+		      const NeutrinoType type,  const FLOAT_T phase_offset, math::ComplexNumber<FLOAT_T> A[3][3]){
 	      
 	      math::ComplexNumber<FLOAT_T> X[3][3];
 	      math::ComplexNumber<FLOAT_T> product[3][3][3];
@@ -611,6 +597,18 @@ namespace cudaprob3{
 		}
 	    }
 	 
+	  /*
+	   * Get 3x3 transition amplitude Aout for neutrino with energy E travelling Len kilometers through matter of constant density rho
+	   */
+	  template<typename FLOAT_T>
+	  HOSTDEVICEQUALIFIER
+	  void get_transition_matrix(NeutrinoType nutype, FLOAT_T Enu, FLOAT_T rho, FLOAT_T Len, math::ComplexNumber<FLOAT_T> Aout[3][3], FLOAT_T phase_offset){
+	    
+	    FLOAT_T d_dmMatVac[3][3], d_dmMatMat[3][3];
+	    getMfast(Enu, rho, nutype, d_dmMatMat, d_dmMatVac);
+	    
+	    getA(Len, Enu, rho, d_dmMatVac, d_dmMatMat, nutype, phase_offset, Aout);
+	  }
 
 	  //##########################################################
 	  /*
@@ -626,8 +624,8 @@ namespace cudaprob3{
 	    FLOAT_T d_dmMatVac[3][3], d_dmMatMat[3][3];
 	    getMfast(Enu, rho, nutype, d_dmMatMat, d_dmMatVac);
 	    
-	    getArg(Len, Enu, d_dmMatVac, Arg, phase_offset);
-	    getC(Enu, rho, d_dmMatVac, d_dmMatMat, nutype, Cout, phase_offset);
+	    getArg(Len, Enu, d_dmMatVac, phase_offset, Arg);
+	    getC(Enu, rho, d_dmMatVac, d_dmMatMat, nutype, phase_offset, Cout);
 	  }
 
             /*
@@ -737,10 +735,8 @@ namespace cudaprob3{
 		math::ComplexNumber<FLOAT_T> ExpansionMatrix[nMaxLayers][nExp][nNuFlav][nNuFlav];
 		FLOAT_T arg[nMaxLayers][nNuFlav];
 
-		/*
 		// DB Uncomment for debugging get_transition_matrix against get_transition_matrix_expansion
 		math::ComplexNumber<FLOAT_T> TransitionMatrix_getA[nNuFlav][nNuFlav];
-		*/
 
 		FLOAT_T Prob[nNuFlav][nNuFlav];
 
@@ -765,11 +761,6 @@ namespace cudaprob3{
 			clear_complex_matrix(ExpansionMatrix[iLayer][iNuFlav]);
 		      }
 		    }
-
-		    /*
-		    //DB Uncomment for debugging get_transition_matrix against get_transition_matrix_expansion
-		    clear_complex_matrix(TransitionMatrix_getA);
-		    */
 
 		    UNROLLQUALIFIER
 		      for (int iLayer=0;iLayer<nMaxLayers;iLayer++) {
@@ -841,7 +832,6 @@ namespace cudaprob3{
 		      const FLOAT_T distance = getTraversedDistanceOfLayer(radii, iLayer, MaxLayer, PathLength, TotalEarthLength, cosine_zenith);
 		      const FLOAT_T density = getDensityOfLayer(rhos, iLayer, MaxLayer);
 		     
-		      /*
 		      //DB Uncomment for debugging get_transition_matrix against get_transition_matrix_expansion
 		      get_transition_matrix(type,
 					    energy,
@@ -850,7 +840,6 @@ namespace cudaprob3{
 					    TransitionMatrix_getA,
 					    phaseOffset
 					    );
-		      */
 
 		      get_transition_matrix_expansion(type,
 						      energy,
@@ -868,7 +857,6 @@ namespace cudaprob3{
 			multiply_phase_matrix(arg[iLayer][iNuFlav],ExpansionMatrix[iLayer][iNuFlav],TransitionMatrix);
 		      }
 		      
-		      /*
 		      //DB Uncomment for debugging get_transition_matrix against get_transition_matrix_expansion
 		      for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
 			for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++) {
@@ -934,7 +922,6 @@ namespace cudaprob3{
 			  }
 			}
 		      }
-		      */
 
 		      if (iLayer == iLayerAtm) { // atmosphere
 
@@ -1157,7 +1144,7 @@ namespace cudaprob3{
 	    }
             #endif
 
-	 }// namespace physics
+	  }// namespace physics
 
 } // namespace cudaprob3
 
