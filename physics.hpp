@@ -578,55 +578,55 @@ namespace cudaprob3{
             }
 
 
-            template<typename FLOAT_T>
-            HOSTDEVICEQUALIFIER
-            void calculate(NeutrinoType type,
-                            const FLOAT_T* const cosinelist,
-                            int n_cosines,
-                            const FLOAT_T* const energylist,
-                            int n_energies,
-                            const FLOAT_T* const radii,
-                            const FLOAT_T* const rhos,
-                            const int* const maxlayers,
-                            FLOAT_T ProductionHeightinCentimeter,
-                            FLOAT_T* const result){
-
+	  template<typename FLOAT_T>
+	  HOSTDEVICEQUALIFIER
+	  void calculate(NeutrinoType type,
+			 const FLOAT_T* const cosinelist,
+			 int n_cosines,
+			 const FLOAT_T* const energylist,
+			 int n_energies,
+			 const FLOAT_T* const radii,
+			 const FLOAT_T* const rhos,
+			 const int* const maxlayers,
+			 FLOAT_T ProductionHeightinCentimeter,
+			 FLOAT_T* const result){
+	    
             //prepare more constant data. For the kernel, this is done by the wrapper function callCalculateKernelAsync
-            #ifndef __CUDA_ARCH__
-                prepare_getMfast<FLOAT_T>(type);
-            #endif
-
-            #ifdef __CUDA_ARCH__
-                // on the device, we use the global thread Id to index the data
-                const int max_energies_per_path = SDIV(n_energies, blockDim.x) * blockDim.x;
-                for(unsigned index = blockIdx.x * blockDim.x + threadIdx.x; index < n_cosines * max_energies_per_path; index += blockDim.x * gridDim.x){
-                    const unsigned index_energy = index % max_energies_per_path;
-                    const unsigned index_cosine = index / max_energies_per_path;
-            #else
-                // on the host, we use OpenMP to parallelize looping over cosines
-                #pragma omp parallel for schedule(dynamic)
-                for(int index_cosine = 0; index_cosine < n_cosines; index_cosine += 1){
-            #endif
-
-                    const FLOAT_T cosine_zenith = cosinelist[index_cosine];
-
-                    const FLOAT_T PathLength = sqrt((Constants<FLOAT_T>::REarthcm() + ProductionHeightinCentimeter )*(Constants<FLOAT_T>::REarthcm() + ProductionHeightinCentimeter)
+#ifndef __CUDA_ARCH__
+	    prepare_getMfast<FLOAT_T>(type);
+#endif
+	    
+#ifdef __CUDA_ARCH__
+	    // on the device, we use the global thread Id to index the data
+	    const int max_energies_per_path = SDIV(n_energies, blockDim.x) * blockDim.x;
+	    for(unsigned index = blockIdx.x * blockDim.x + threadIdx.x; index < n_cosines * max_energies_per_path; index += blockDim.x * gridDim.x){
+	      const unsigned index_energy = index % max_energies_per_path;
+	      const unsigned index_cosine = index / max_energies_per_path;
+#else
+	      // on the host, we use OpenMP to parallelize looping over cosines
+#pragma omp parallel for schedule(dynamic)
+	      for(int index_cosine = 0; index_cosine < n_cosines; index_cosine += 1){
+#endif
+		
+		const FLOAT_T cosine_zenith = cosinelist[index_cosine];
+		
+		const FLOAT_T PathLength = sqrt((Constants<FLOAT_T>::REarthcm() + ProductionHeightinCentimeter )*(Constants<FLOAT_T>::REarthcm() + ProductionHeightinCentimeter)
                                                 - (Constants<FLOAT_T>::REarthcm()*Constants<FLOAT_T>::REarthcm())*( 1 - cosine_zenith*cosine_zenith)) - Constants<FLOAT_T>::REarthcm()*cosine_zenith;
-
-                    const FLOAT_T TotalEarthLength =  -2.0*cosine_zenith*Constants<FLOAT_T>::REarthcm(); // in [cm]
-                    const int MaxLayer = maxlayers[index_cosine];
-
-                    math::ComplexNumber<FLOAT_T> TransitionMatrix[3][3];
-                    math::ComplexNumber<FLOAT_T> TransitionMatrixCoreToMantle[3][3];
-                    math::ComplexNumber<FLOAT_T> finalTransitionMatrix[3][3];
-                    math::ComplexNumber<FLOAT_T> TransitionTemp[3][3];
-
-                #ifndef __CUDA_ARCH__
-                    for(int index_energy = 0; index_energy < n_energies; index_energy += 1){
-                #else
-                    if(index_energy < n_energies){
-                #endif
-
+		
+		const FLOAT_T TotalEarthLength =  -2.0*cosine_zenith*Constants<FLOAT_T>::REarthcm(); // in [cm]
+		const int MaxLayer = maxlayers[index_cosine];
+		
+		math::ComplexNumber<FLOAT_T> TransitionMatrix[3][3];
+		math::ComplexNumber<FLOAT_T> TransitionMatrixCoreToMantle[3][3];
+		math::ComplexNumber<FLOAT_T> finalTransitionMatrix[3][3];
+		math::ComplexNumber<FLOAT_T> TransitionTemp[3][3];
+		
+#ifndef __CUDA_ARCH__
+		for(int index_energy = 0; index_energy < n_energies; index_energy += 1){
+#else
+		  if(index_energy < n_energies){
+#endif
+		    
                         const FLOAT_T energy = energylist[index_energy];
 
                         // set TransitionMatrixCoreToMantle to unit matrix
