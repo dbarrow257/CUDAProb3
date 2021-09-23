@@ -428,90 +428,6 @@ namespace cudaprob3{
                     }
                 }
             }
-
-	  template<typename FLOAT_T>
-            HOSTDEVICEQUALIFIER
-	  void getA(const FLOAT_T L, const FLOAT_T E, const FLOAT_T rho, const FLOAT_T d_dmMatVac[][3], const FLOAT_T d_dmMatMat[][3],
-		    const NeutrinoType type, math::ComplexNumber<FLOAT_T> A[3][3], const FLOAT_T phase_offset){
-	    
-	    math::ComplexNumber<FLOAT_T> X[3][3];
-	    math::ComplexNumber<FLOAT_T> product[3][3][3];
-	    /* (1/2)*(1/(h_bar*c)) in units of GeV/(eV^2-km) */
-	    const FLOAT_T LoEfac = 2.534;
-	    
-	    if (phase_offset == 0.0) {
-	      get_product(L, E, rho, d_dmMatVac, d_dmMatMat, type, product);
-	    }
-	    
-	    /* Make the sum with the exponential factor in Eq. (11) */
-	    //memset(X, 0, 3*3*sizeof(math::ComplexNumber<FLOAT_T>));
-	    UNROLLQUALIFIER
-	      for (int i=0; i<3; i++) {
-		UNROLLQUALIFIER
-		  for (int j=0; j<3; j++) {
-		    X[i][j].re = 0;
-		    X[i][j].im = 0;
-		  }
-	      }
-	    
-	    UNROLLQUALIFIER
-	      for (int k=0; k<3; k++) {
-		const FLOAT_T arg = [&](){
-		  if( k == 2)
-		    return -LoEfac * d_dmMatVac[k][0] * L/E + phase_offset;
-		  else
-		    return -LoEfac * d_dmMatVac[k][0] * L/E;
-		}();
-		
-#ifdef __CUDACC__
-		FLOAT_T c,s;
-		sincos(arg, &s, &c);
-#else
-		const FLOAT_T s = sin(arg);
-		const FLOAT_T c = cos(arg);
-#endif
-		UNROLLQUALIFIER
-		  for (int i=0; i<3; i++) {
-		    UNROLLQUALIFIER
-		      for (int j=0; j<3; j++) {
-			X[i][j].re += c*product[i][j][k].re - s*product[i][j][k].im;
-			X[i][j].im += c*product[i][j][k].im + s*product[i][j][k].re;
-		      }
-		  }
-	      }
-	    
-	    /* Eq. (10)*/
-	    //memset(A, 0, 3*3*2*sizeof(FLOAT_T));
-	    
-	    UNROLLQUALIFIER
-	      for (int n=0; n<3; n++) {
-		UNROLLQUALIFIER
-		  for (int m=0; m<3; m++) {
-		    A[n][m].re = 0;
-		    A[n][m].im = 0;
-		  }
-	      }
-	    
-	    UNROLLQUALIFIER
-	      for (int n=0; n<3; n++) {
-		UNROLLQUALIFIER
-		  for (int m=0; m<3; m++) {
-		    UNROLLQUALIFIER
-		      for (int i=0; i<3; i++) {
-			UNROLLQUALIFIER
-			  for (int j=0; j<3; j++) {
-			    // use precomputed factors
-			    A[n][m].re +=
-			      AXFAC(n,m,i,j,0) * X[i][j].re +
-			      AXFAC(n,m,i,j,1) * X[i][j].im;
-			    A[n][m].im +=
-			      AXFAC(n,m,i,j,2) * X[i][j].im +
-			      AXFAC(n,m,i,j,3) * X[i][j].re;
-			  }
-		      }
-		  }
-	      }
-	  }
 	  
 	  /***********************************************************************
   getArg
@@ -588,16 +504,90 @@ namespace cudaprob3{
                     ImSum -= RR_nk[j] * U(jNuFlav,j).im;
                   }
 
-                  C[iExp][iNuFlav][jNuFlav].re = ReSum;
-                  C[iExp][iNuFlav][jNuFlav].im = ImSum;
-
-                }
-              }
-            }
-	    
-          }
-
-
+	  template<typename FLOAT_T>
+            HOSTDEVICEQUALIFIER
+	    void getA(const FLOAT_T L, const FLOAT_T E, const FLOAT_T rho, const FLOAT_T d_dmMatVac[][3], const FLOAT_T d_dmMatMat[][3],
+		      const NeutrinoType type, math::ComplexNumber<FLOAT_T> A[3][3], const FLOAT_T phase_offset){
+	      
+	      math::ComplexNumber<FLOAT_T> X[3][3];
+	      math::ComplexNumber<FLOAT_T> product[3][3][3];
+	      /* (1/2)*(1/(h_bar*c)) in units of GeV/(eV^2-km) */
+	      const FLOAT_T LoEfac = 2.534;
+	      
+	      if (phase_offset == 0.0) {
+		get_product(L, E, rho, d_dmMatVac, d_dmMatMat, type, product);
+	      }
+	      
+	      
+	      /* Make the sum with the exponential factor in Eq. (11) */
+	      //memset(X, 0, 3*3*sizeof(math::ComplexNumber<FLOAT_T>));
+	      UNROLLQUALIFIER
+		for (int i=0; i<3; i++) {
+		  UNROLLQUALIFIER
+		    for (int j=0; j<3; j++) {
+		      X[i][j].re = 0;
+		      X[i][j].im = 0;
+		    }
+		}
+	      
+	      UNROLLQUALIFIER
+		for (int k=0; k<3; k++) {
+		  const FLOAT_T arg = [&](){
+		    if( k == 2)
+		      return -LoEfac * d_dmMatVac[k][0] * L/E + phase_offset;
+		    else
+		      return -LoEfac * d_dmMatVac[k][0] * L/E;
+		  }();
+		  
+#ifdef __CUDACC__
+		  FLOAT_T c,s;
+		  sincos(arg, &s, &c);
+#else
+		  const FLOAT_T s = sin(arg);
+		  const FLOAT_T c = cos(arg);
+#endif
+		  UNROLLQUALIFIER
+		    for (int i=0; i<3; i++) {
+		      UNROLLQUALIFIER
+			for (int j=0; j<3; j++) {
+			  X[i][j].re += c*product[i][j][k].re - s*product[i][j][k].im;
+			  X[i][j].im += c*product[i][j][k].im + s*product[i][j][k].re;
+			}
+		    }
+		}	      
+	      
+	      /* Eq. (10)*/
+	      //memset(A, 0, 3*3*2*sizeof(FLOAT_T));
+	      
+	      UNROLLQUALIFIER
+		for (int n=0; n<3; n++) {
+		  UNROLLQUALIFIER
+		    for (int m=0; m<3; m++) {
+		      A[n][m].re = 0;
+		      A[n][m].im = 0;
+		    }
+		}	      
+	      UNROLLQUALIFIER
+		for (int n=0; n<3; n++) {
+		  UNROLLQUALIFIER
+		    for (int m=0; m<3; m++) {
+		      UNROLLQUALIFIER
+			for (int i=0; i<3; i++) {
+			  UNROLLQUALIFIER
+			    for (int j=0; j<3; j++) {
+			      // use precomputed factors
+			      A[n][m].re +=
+				AXFAC(n,m,i,j,0) * X[i][j].re +
+				AXFAC(n,m,i,j,1) * X[i][j].im;
+			      A[n][m].im +=
+				AXFAC(n,m,i,j,2) * X[i][j].im +
+				AXFAC(n,m,i,j,3) * X[i][j].re;
+			    }
+			}
+		    }
+		}
+	    }
+	  
 	  //##########################################################
 	  /*
 	   *   Obtain transition matrix expanded as A = sum_k C_k exp(i arg_k).
