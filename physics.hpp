@@ -836,7 +836,7 @@ namespace cudaprob3{
 		      //DB Uncomment for debugging get_transition_matrix against get_transition_matrix_expansion
 		      get_transition_matrix(type,
 					    energy,
-					    density,
+					    density * Constants<FLOAT_T>::density_convert(),
 					    distance / Constants<FLOAT_T>::km2cm(),
 					    TransitionMatrix_getA,
 					    phaseOffset
@@ -848,7 +848,7 @@ namespace cudaprob3{
 
 		      get_transition_matrix_expansion(type,
 						      energy,
-						      density,
+						      density * Constants<FLOAT_T>::density_convert(),
 						      distance / Constants<FLOAT_T>::km2cm(),
 						      ExpansionMatrix[iLayer],
 						      arg[iLayer],
@@ -862,11 +862,17 @@ namespace cudaprob3{
 			multiply_phase_matrix(arg[iLayer][iNuFlav],ExpansionMatrix[iLayer][iNuFlav],TransitionMatrix);
 		      }
 
+		      /*
+		      std::cout << "type:" << type << std::endl;
+		      std::cout << "energy:" << energy <<std::endl;
+		      std::cout << "density * Constants<FLOAT_T>::density_convert():" << density * Constants<FLOAT_T>::density_convert() << std::endl;
+		      std::cout << "distance / Constants<FLOAT_T>::km2cm():" << distance / Constants<FLOAT_T>::km2cm() <<std::endl;
 		      for (int i=0;i<3;i++) {
 			for (int j=0;j<3;j++) {
 			  std::cout << "Layer:" << std::setw(5) << iLayer << " | i:" << i << " | j:" << j << " | TransitionMatrix[i][j].re:" << std::setw(10) << TransitionMatrix[i][j].re << " | TransitionMatrix[i][j].im:" << std::setw(10) << TransitionMatrix[i][j].im << std::endl;
 			}
 		      }
+		      */
 
 		      
 		      //DB Uncomment for debugging get_transition_matrix against get_transition_matrix_expansion
@@ -964,6 +970,14 @@ namespace cudaprob3{
 			copy_complex_matrix( TransitionTemp, finalTransitionMatrix );
 		      }
 
+		      /*
+		      for (int i=0;i<3;i++) {
+			for (int j=0;j<3;j++) {
+			  std::cout << "Layer:" << std::setw(5) << iLayer << " | i:" << i << " | j:" << j << " | finalTransitionMatrix[i][j].re:" << std::setw(10) << finalTransitionMatrix[i][j].re << " | finalTransitionMatrix[i][j].im:" << std::setw(10) << finalTransitionMatrix[i][j].im << std::endl;
+			}
+		      }
+		      */
+
 		    }
 		    
 		    // calculate final transition matrix
@@ -971,7 +985,7 @@ namespace cudaprob3{
 		    multiply_complex_matrix( TransitionMatrixCoreToMantle, finalTransitionMatrix, TransitionTemp );
 		    copy_complex_matrix( TransitionTemp, finalTransitionMatrix );
 
-
+		    /*
 		    for (int i=0;i<3;i++) {
 		      for (int j=0;j<3;j++) {
 			std::cout << "i:" << i << " | j:" << j << " | finalTransitionMatrix[i][j].re:" << std::setw(10) << finalTransitionMatrix[i][j].re << " | finalTransitionMatrix[i][j].im:" << std::setw(10) << finalTransitionMatrix[i][j].im << std::endl;
@@ -982,8 +996,9 @@ namespace cudaprob3{
 			std::cout << "i:" << i << " | j:" << j << " | TransitionMatrixCoreToMantle[i][j].re:" << std::setw(10) << TransitionMatrixCoreToMantle[i][j].re << " | TransitionMatrixCoreToMantle[i][j].im:" << std::setw(10) << TransitionMatrixCoreToMantle[i][j].im << std::endl;
 		      }
 		    }
-
 		    throw;
+
+		    */
 
 		    //============================================================================================================
 		    //DB Calculate totalLenShiftFactors using atmospheric layer
