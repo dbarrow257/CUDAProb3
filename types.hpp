@@ -24,7 +24,6 @@ namespace cudaprob3{
         e_e = 0, e_m = 1, e_t = 2,
         m_e = 3, m_m = 4, m_t = 5,
 	t_e = 6, t_m = 7, t_t = 8,
-	nChannels = 9
     };
 
     enum NeutrinoType {Neutrino, Antineutrino};

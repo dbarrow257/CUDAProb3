@@ -192,11 +192,6 @@ namespace cudaprob3{
 
         // get oscillation weight for specific cosine and energy
         void getProbabilityArr(FLOAT_T* probArr, ProbType t) {
-            int index_cosine = 0;
-            int index_energy = 0;
-
-            if(index_cosine >= this->n_cosines || index_energy >= this->n_energies)
-	    		    throw std::runtime_error("CudaPropagatorSingle::getProbability. Invalid indices");
 
             if(!resultsResideOnHost){
 		getResultFromDevice();

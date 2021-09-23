@@ -631,7 +631,7 @@ namespace cudaprob3{
             */
             template<typename FLOAT_T>
             HOSTDEVICEQUALIFIER
-            FLOAT_T getDensityOfLayer(const FLOAT_T* const rhos,  int layer, int max_layer){
+            FLOAT_T getDensityOfLayer(const FLOAT_T* const rhos, int layer, int max_layer){
                 if(layer == 0) return 0.0;
                 int i;
                 if(layer <= max_layer){
@@ -688,7 +688,7 @@ namespace cudaprob3{
 			 const FLOAT_T* const rhos,
 			 const int* const maxlayers,
 			 FLOAT_T* const result){
-	    
+
             //prepare more constant data. For the kernel, this is done by the wrapper function callCalculateKernelAsync
 #ifndef __CUDA_ARCH__
 	    prepare_getMfast<FLOAT_T>(type);
