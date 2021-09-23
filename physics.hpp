@@ -428,6 +428,20 @@ namespace cudaprob3{
                     }
                 }
             }
+
+	  /*
+	   * Get 3x3 transition amplitude Aout for neutrino with energy E travelling Len kilometers through matter of constant density rho
+	   */
+	  template<typename FLOAT_T>
+	  HOSTDEVICEQUALIFIER
+	  void get_transition_matrix(NeutrinoType nutype, FLOAT_T Enu, FLOAT_T rho, FLOAT_T Len, math::ComplexNumber<FLOAT_T> Aout[3][3], FLOAT_T Arg[3], FLOAT_T phase_offset){
+	    
+	    FLOAT_T d_dmMatVac[3][3], d_dmMatMat[3][3];
+	    getMfast(Enu, rho, nutype, d_dmMatMat, d_dmMatVac);
+	    
+	    getArg(Len, Enu, d_dmMatVac, Arg, phase_offset);
+	    getA(Len, Enu, rho, d_dmMatVac, d_dmMatMat, nutype, phase_offset, Aout);
+	  }
 	  
 	  /***********************************************************************
   getArg
@@ -587,20 +601,7 @@ namespace cudaprob3{
 		    }
 		}
 	    }
-	  
-	  /*
-	   * Get 3x3 transition amplitude Aout for neutrino with energy E travelling Len kilometers through matter of constant density rho
-	   */
-	  template<typename FLOAT_T>
-	  HOSTDEVICEQUALIFIER
-	  void get_transition_matrix(NeutrinoType nutype, FLOAT_T Enu, FLOAT_T rho, FLOAT_T Len, math::ComplexNumber<FLOAT_T> Aout[3][3], FLOAT_T Arg[3], FLOAT_T phase_offset){
-	    
-	    FLOAT_T d_dmMatVac[3][3], d_dmMatMat[3][3];
-	    getMfast(Enu, rho, nutype, d_dmMatMat, d_dmMatVac);
-	    
-	    getArg(Len, Enu, d_dmMatVac, Arg, phase_offset);
-	    getA(Len, Enu, rho, d_dmMatVac, d_dmMatMat, nutype, phase_offset, Aout);
-	  }
+	 
 
 	  //##########################################################
 	  /*
@@ -730,7 +731,6 @@ namespace cudaprob3{
 		/*
 		// DB Uncomment for debugging get_transition_matrix against get_transition_matrix_expansion
 		math::ComplexNumber<FLOAT_T> TransitionMatrix_getA[nNuFlav][nNuFlav];
-		FLOAT_T arg_getA[nMaxLayers][nNuFlav];
 		*/
 
 		FLOAT_T Prob[nNuFlav][nNuFlav];
@@ -768,11 +768,6 @@ namespace cudaprob3{
 			UNROLLQUALIFIER
 			  for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
 			    arg[iLayer][iNuFlav] = 0.;
-			    
-			    /*
-			    //DB Uncomment for debugging get_transition_matrix against get_transition_matrix_expansion
-			    arg_getA[iLayer][iNuFlav] = 0.;
-			    */
 			  }
 		      }
 		    
@@ -845,7 +840,6 @@ namespace cudaprob3{
 					    density,
 					    distance / Constants<FLOAT_T>::km2cm(),
 					    TransitionMatrix_getA,
-					    arg_getA[iLayer],
 					    phaseOffset
 					    );
 		      */
@@ -880,11 +874,6 @@ namespace cudaprob3{
 			    std::cout << "------------ Arg[i] -------------" << std::endl;
 			    for (int kNuFlav=0;kNuFlav<nNuFlav;kNuFlav++) {
 			      std::cout << "arg[" << kNuFlav << "]:" << arg[iLayer][kNuFlav] << std::endl;
-			    }
-
-			    std::cout << "------------ Arg_getA[iNuFlav] -------------" << std::endl;
-			    for (int kNuFlav=0;kNuFlav<nNuFlav;kNuFlav++) {
-			      std::cout << "arg_getA[" << kNuFlav << "]:" << arg_getA[iLayer][kNuFlav] << std::endl;
 			    }
 
 			    std::cout << "------------ ExpansionMatrix[iLayer,iExp,kNuFlav,mNuFlav] -------------" << std::endl;
