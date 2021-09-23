@@ -225,6 +225,8 @@ namespace cudaprob3{
                 throw std::runtime_error("CudaPropagatorSingle::calculateProbabilities. Object has been moved from.");
             if(!this->isSetProductionHeight)
                 throw std::runtime_error("CudaPropagatorSingle::calculateProbabilities. production height was not set");
+            if(!this->isSetProductionHeightArray)
+                throw std::runtime_error("CudaPropagatorSingle::calculateProbabilities. production height array was not set");
 
             resultsResideOnHost = false;
             cudaSetDevice(deviceId); CUERR;

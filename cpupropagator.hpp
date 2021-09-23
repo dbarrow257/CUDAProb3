@@ -85,6 +85,8 @@ namespace cudaprob3{
                 throw std::runtime_error("CpuPropagator::calculateProbabilities. Object has been moved from.");
             if(!this->isSetProductionHeight)
                 throw std::runtime_error("CpuPropagator::calculateProbabilities. production height was not set");
+	    if (!this->isSetProductionHeightArray)
+                throw std::runtime_error("CpuPropagator::calculateProbabilities. production height array was not set");	      
 
             // set neutrino parameters for core physics functions
             physics::setMixMatrix_host(this->Mix_U.data());
