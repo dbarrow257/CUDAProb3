@@ -588,6 +588,20 @@ namespace cudaprob3{
 		}
 	    }
 	  
+	  /*
+	   * Get 3x3 transition amplitude Aout for neutrino with energy E travelling Len kilometers through matter of constant density rho
+	   */
+	  template<typename FLOAT_T>
+	  HOSTDEVICEQUALIFIER
+	  void get_transition_matrix(NeutrinoType nutype, FLOAT_T Enu, FLOAT_T rho, FLOAT_T Len, math::ComplexNumber<FLOAT_T> Aout[3][3], FLOAT_T Arg[3], FLOAT_T phase_offset){
+	    
+	    FLOAT_T d_dmMatVac[3][3], d_dmMatMat[3][3];
+	    getMfast(Enu, rho, nutype, d_dmMatMat, d_dmMatVac);
+	    
+	    getArg(Len, Enu, d_dmMatVac, Arg, phase_offset);
+	    getA(Len, Enu, rho, d_dmMatVac, d_dmMatMat, nutype, phase_offset, Aout);
+	  }
+
 	  //##########################################################
 	  /*
 	   *   Obtain transition matrix expanded as A = sum_k C_k exp(i arg_k).
@@ -604,20 +618,6 @@ namespace cudaprob3{
 	    
 	    getArg(Len, Enu, d_dmMatVac, Arg, phase_offset);
 	    getC(Enu, rho, d_dmMatVac, d_dmMatMat, nutype, Cout, phase_offset);
-	  }
-	  
-	  /*
-	   * Get 3x3 transition amplitude Aout for neutrino with energy E travelling Len kilometers through matter of constant density rho
-	   */
-	  template<typename FLOAT_T>
-	  HOSTDEVICEQUALIFIER
-	  void get_transition_matrix(NeutrinoType nutype, FLOAT_T Enu, FLOAT_T rho, FLOAT_T Len, math::ComplexNumber<FLOAT_T> Aout[3][3], FLOAT_T Arg[3], FLOAT_T phase_offset){
-	    
-	    FLOAT_T d_dmMatVac[3][3], d_dmMatMat[3][3];
-	    getMfast(Enu, rho, nutype, d_dmMatMat, d_dmMatVac);
-	    
-	    getArg(Len, Enu, d_dmMatVac, Arg, phase_offset);
-	    getA(Len, Enu, rho, d_dmMatVac, d_dmMatMat, nutype, phase_offset, Aout);
 	  }
 
             /*
