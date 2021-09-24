@@ -250,6 +250,7 @@ namespace cudaprob3{
                             d_radii.get(), d_rhos.get(),
                             d_maxlayers.get(),
 			    this->ProductionHeightinCentimeter,
+			    this->useProductionHeightAveraging,
 			    d_productionHeight_prob_list.get(),
 			    d_productionHeight_bins_list.get(),
                             d_result_list.get());

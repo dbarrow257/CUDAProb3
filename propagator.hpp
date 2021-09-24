@@ -82,6 +82,7 @@ namespace cudaprob3{
             ProductionHeightinCentimeter = other.ProductionHeightinCentimeter;
             isSetCosine = other.isSetCosine;
             isSetProductionHeight = other.isSetProductionHeight;
+	    useProductionHeightAveraging = other.useProductionHeightAveraging;
             isInit = other.isInit;
 
 	    productionHeightList_prob = other.productionHeightList_prob;
@@ -106,6 +107,7 @@ namespace cudaprob3{
             ProductionHeightinCentimeter = other.ProductionHeightinCentimeter;
             isSetCosine = other.isSetCosine;
             isSetProductionHeight = other.isSetProductionHeight;
+	    useProductionHeightAveraging = other.useProductionHeightAveraging;
             isInit = other.isInit;
 
             productionHeightList_prob = other.productionHeightList_prob;
@@ -118,6 +120,10 @@ namespace cudaprob3{
         }
 
     public:
+      void UseProductionHeightAveraging(bool useProductionHeightAveraging_) {
+	this->useProductionHeightAveraging = useProductionHeightAveraging_;
+      }
+
         /// \brief Set density information from arrays.
         /// \details radii_ and rhos_ must be same size. both radii_ and rhos_ must be sorted, in the same order.
         /// The density (g/cm^3) at a distance (km) from the center of the sphere between radii_[i], exclusive,
@@ -369,6 +375,7 @@ namespace cudaprob3{
 
         FLOAT_T ProductionHeightinCentimeter;
 
+        bool useProductionHeightAveraging = false;
         bool isSetProductionHeightArray = false;
         bool isSetProductionHeight = false;
         bool isSetCosine = false;
