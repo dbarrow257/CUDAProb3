@@ -93,9 +93,20 @@ namespace cudaprob3{
             physics::setMassDifferences_host(this->dm.data());
 
             physics::calculate(type, this->cosineList.data(), this->cosineList.size(),
-			       this->energyList.data(), this->energyList.size(), this->radii.data(), this->rhos.data(), this->maxlayers.data(), this->ProductionHeightinCentimeter, this->useProductionHeightAveraging, this->nProductionHeightBins,
+			       this->energyList.data(), this->energyList.size(), this->radii.data(), this->rhos.data(), this->yps.data(), this->maxlayers.data(), this->ProductionHeightinCentimeter, this->useProductionHeightAveraging, this->nProductionHeightBins,
 			       this->productionHeightList_prob.data(), this->productionHeightList_bins.data(), resultList.data());
         }
+
+      void setChemicalComposition(const std::vector<FLOAT_T>& list) override{
+        if (list.size() != this->yps.size()) {
+          throw std::runtime_error("CpuPropagator::setChemicalComposition. Size of input list not equal to expectation.");
+        }
+	
+        for (int iyp=0;iyp<list.size();iyp++) {
+          this->yps[iyp] = list[iyp];
+        }
+	
+      }
 
         FLOAT_T getProbability(int index_cosine, int index_energy, ProbType t) override{
 	  if(index_cosine >= this->n_cosines || index_energy >= this->n_energies) {

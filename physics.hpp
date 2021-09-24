@@ -634,7 +634,7 @@ namespace cudaprob3{
             */
             template<typename FLOAT_T>
             HOSTDEVICEQUALIFIER
-            FLOAT_T getDensityOfLayer(const FLOAT_T* const rhos, int layer, int max_layer){
+            FLOAT_T getDensityOfLayer(const FLOAT_T* const rhos, const FLOAT_T* const yps, int layer, int max_layer){
                 if(layer == 0) return 0.0;
                 int i;
                 if(layer <= max_layer){
@@ -643,7 +643,8 @@ namespace cudaprob3{
                     i = 2 * max_layer - layer - 1;
                 }
 
-                return rhos[i];
+		//printf("yps[%i]:%4.4f",i,yps[i]);
+                return rhos[i]*yps[i];
             }
 
             /*
@@ -687,6 +688,7 @@ namespace cudaprob3{
 			 int n_energies,
 			 const FLOAT_T* const radii,
 			 const FLOAT_T* const rhos,
+			 const FLOAT_T* const yps,
 			 const int* const maxlayers,
 			 FLOAT_T ProductionHeightinCentimeter,
 			 bool useProductionHeightAveraging,
@@ -791,7 +793,7 @@ namespace cudaprob3{
 		    // loop from vacuum layer to innermost crossed layer
 		    for (int iLayer=0;iLayer<=MaxLayer;iLayer++){
 		      const FLOAT_T distance = getTraversedDistanceOfLayer(radii, iLayer, MaxLayer, PathLength, TotalEarthLength, cosine_zenith);
-		      const FLOAT_T density = getDensityOfLayer(rhos, iLayer, MaxLayer);
+		      const FLOAT_T density = getDensityOfLayer(rhos, yps, iLayer, MaxLayer);
 		     
 		      /*
 		      //DB Uncomment for debugging get_transition_matrix against get_transition_matrix_expansion
@@ -812,7 +814,7 @@ namespace cudaprob3{
 
 		      get_transition_matrix_expansion(type,
 						      energy,
-						      density * Constants<FLOAT_T>::density_convert(),
+						      density /** Constants<FLOAT_T>::density_convert()*/,
 						      distance / Constants<FLOAT_T>::km2cm(),
 						      ExpansionMatrix[iLayer],
 						      arg[iLayer],
@@ -1099,6 +1101,7 @@ namespace cudaprob3{
                                 int n_energies,
                                 const FLOAT_T* const radii,
                                 const FLOAT_T* const rhos,
+				const FLOAT_T* const yps,
                                 const int* const maxlayers,
 				FLOAT_T ProductionHeightinCentimeter,
 				bool useProductionHeightAveraging,
@@ -1107,7 +1110,7 @@ namespace cudaprob3{
 				const FLOAT_T* const productionHeight_binedges_list,
                                 FLOAT_T* const result){
 
-	      calculate(type, cosinelist, n_cosines, energylist, n_energies, radii, rhos, maxlayers, ProductionHeightinCentimeter, useProductionHeightAveraging, nProductionHeightBins, productionHeight_prob_list, productionHeight_binedges_list, result);
+	      calculate(type, cosinelist, n_cosines, energylist, n_energies, radii, rhos, yps, maxlayers, ProductionHeightinCentimeter, useProductionHeightAveraging, nProductionHeightBins, productionHeight_prob_list, productionHeight_binedges_list, result);
             }
 
             template<typename FLOAT_T>
@@ -1121,6 +1124,7 @@ namespace cudaprob3{
                                         int n_energies,
                                         const FLOAT_T* const radii,
                                         const FLOAT_T* const rhos,
+					const FLOAT_T* const yps,
 					const int* const maxlayers,
 				        FLOAT_T ProductionHeightinCentimeter,
 					bool useProductionHeightAveraging,
@@ -1131,7 +1135,7 @@ namespace cudaprob3{
 
                 prepare_getMfast<FLOAT_T>(type);
 
-                calculateKernel<FLOAT_T><<<grid, block, 0, stream>>>(type, cosinelist, n_cosines, energylist, n_energies, radii, rhos, maxlayers, ProductionHeightinCentimeter, useProductionHeightAveraging, nProductionHeightBins, productionHeight_prob_list, productionHeight_binedges_list,  result);
+                calculateKernel<FLOAT_T><<<grid, block, 0, stream>>>(type, cosinelist, n_cosines, energylist, n_energies, radii, rhos, yps, maxlayers, ProductionHeightinCentimeter, useProductionHeightAveraging, nProductionHeightBins, productionHeight_prob_list, productionHeight_binedges_list,  result);
                 CUERR;
 	    }
             #endif

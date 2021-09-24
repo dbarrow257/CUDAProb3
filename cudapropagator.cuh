@@ -115,6 +115,7 @@ namespace cudaprob3{
 
             resultList = std::move(other.resultList);
             d_rhos = std::move(other.d_rhos);
+	    d_yps = std::move(other.d_yps);
             d_radii = std::move(other.d_radii);
             d_maxlayers = std::move(other.d_maxlayers);
             d_energy_list = std::move(other.d_energy_list);
@@ -133,9 +134,9 @@ namespace cudaprob3{
 
     public:
 
-        void setDensity(const std::vector<FLOAT_T>& radii_, const std::vector<FLOAT_T>& rhos_) override{
+        void setDensity(const std::vector<FLOAT_T>& radii_, const std::vector<FLOAT_T>& rhos_, const std::vector<FLOAT_T>& yps_) override{
             // call parent function to set up host density data
-            Propagator<FLOAT_T>::setDensity(radii_, rhos_);
+            Propagator<FLOAT_T>::setDensity(radii_, rhos_, yps_);
 
             // allocate GPU arrays for density information and copy host density data to device density data
             cudaSetDevice(deviceId); CUERR;
@@ -143,9 +144,11 @@ namespace cudaprob3{
             int nDensityLayers = this->radii.size();
 	    
             d_rhos = make_unique_dev<FLOAT_T>(deviceId, 2 * nDensityLayers + 1);
+	    d_yps = make_unique_dev<FLOAT_T>(deviceId, 2 * nDensityLayers + 1);
             d_radii = make_unique_dev<FLOAT_T>(deviceId, 2 * nDensityLayers + 1);
 
             cudaMemcpy(d_rhos.get(), this->rhos.data(), sizeof(FLOAT_T) * nDensityLayers, H2D); CUERR;
+	    cudaMemcpy(d_yps.get(), this->yps.data(), sizeof(FLOAT_T) * nDensityLayers, H2D); CUERR;
             cudaMemcpy(d_radii.get(), this->radii.data(), sizeof(FLOAT_T) * nDensityLayers, H2D); CUERR;
         }
 
@@ -173,6 +176,20 @@ namespace cudaprob3{
         void calculateProbabilities(NeutrinoType type) override{
             calculateProbabilitiesAsync(type);
             waitForCompletion();
+        }
+
+        void setChemicalComposition(const std::vector<FLOAT_T>& list) override{
+          if (list.size() != this->yps.size()) {
+            throw std::runtime_error("CpuPropagator::setChemicalComposition. Size of input list not equal to expectation.");
+          }
+
+          for (int iyp=0;iyp<list.size();iyp++) {
+            this->yps[iyp] = list[iyp];
+          }
+
+          int nDensityLayers = this->radii.size();
+
+          cudaMemcpy(d_yps.get(), this->yps.data(), sizeof(FLOAT_T) * nDensityLayers, H2D); CUERR;
         }
 
         // get oscillation weight for specific cosine and energy
@@ -247,7 +264,7 @@ namespace cudaprob3{
                             type,
                             d_cosine_list.get(), this->n_cosines,
                             d_energy_list.get(), this->n_energies,
-                            d_radii.get(), d_rhos.get(),
+                            d_radii.get(), d_rhos.get(), d_yps.get(),
                             d_maxlayers.get(),
 			    this->ProductionHeightinCentimeter,
 			    this->useProductionHeightAveraging,
@@ -278,6 +295,7 @@ namespace cudaprob3{
         unique_pinned_ptr<FLOAT_T> resultList;
 
         unique_dev_ptr<FLOAT_T> d_rhos;
+	unique_dev_ptr<FLOAT_T> d_yps;
         unique_dev_ptr<FLOAT_T> d_radii;
         unique_dev_ptr<int> d_maxlayers;
         unique_dev_ptr<FLOAT_T> d_energy_list;
@@ -395,11 +413,11 @@ namespace cudaprob3{
                 propagator->setDensityFromFile(filename);
         }
 
-        void setDensity(const std::vector<FLOAT_T>& radii, const std::vector<FLOAT_T>& rhos) override{
-            Propagator<FLOAT_T>::setDensity(radii, rhos);
+        void setDensity(const std::vector<FLOAT_T>& radii, const std::vector<FLOAT_T>& rhos, const std::vector<FLOAT_T>& yps) override{
+            Propagator<FLOAT_T>::setDensity(radii, rhos, yps);
 
             for(auto& propagator : propagatorVector)
-                propagator->setDensity(radii, rhos);
+                propagator->setDensity(radii, rhos, yps);
         }
 
         void setNeutrinoMasses(FLOAT_T dm12sq, FLOAT_T dm23sq) override{
