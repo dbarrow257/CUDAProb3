@@ -724,7 +724,7 @@ namespace cudaprob3{
 
 		FLOAT_T phaseOffset = 0.;
 
-		const int nMaxLayers = MAXNLAYERS;
+		const int nMaxLayers = Constants<FLOAT_T>::MaxNLayers();
 
 		math::ComplexNumber<FLOAT_T> TransitionMatrix[nNuFlav][nNuFlav];
 		math::ComplexNumber<FLOAT_T> TransitionMatrixCoreToMantle[nNuFlav][nNuFlav];

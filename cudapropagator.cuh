@@ -75,8 +75,8 @@ namespace cudaprob3{
             //allocate GPU arrays
             d_energy_list = make_unique_dev<FLOAT_T>(deviceId, n_energies_); CUERR;
             d_cosine_list = make_unique_dev<FLOAT_T>(deviceId, n_cosines_); CUERR;
-            d_productionHeight_prob_list = make_unique_dev<FLOAT_T>(deviceId, NPRODHEIGHTBINS*2*3*n_energies_*n_cosines_); CUERR;
-            d_productionHeight_bins_list = make_unique_dev<FLOAT_T>(deviceId, NPRODHEIGHTBINS+1); CUERR;
+            d_productionHeight_prob_list = make_unique_dev<FLOAT_T>(deviceId, Constants<FLOAT_T>::MaxProdHeightBins()*2*3*n_energies_*n_cosines_); CUERR;
+            d_productionHeight_bins_list = make_unique_dev<FLOAT_T>(deviceId, Constants<FLOAT_T>::MaxProdHeightBins()+1); CUERR;
             d_result_list = make_shared_dev<FLOAT_T>(deviceId, std::uint64_t(n_cosines_) * std::uint64_t(n_energies_) * std::uint64_t(9)); CUERR;
             d_maxlayers = make_unique_dev<int>(deviceId, this->n_cosines);
         }
@@ -141,7 +141,7 @@ namespace cudaprob3{
             cudaSetDevice(deviceId); CUERR;
 
             int nDensityLayers = this->radii.size();
-
+	    
             d_rhos = make_unique_dev<FLOAT_T>(deviceId, 2 * nDensityLayers + 1);
             d_radii = make_unique_dev<FLOAT_T>(deviceId, 2 * nDensityLayers + 1);
 
@@ -165,8 +165,8 @@ namespace cudaprob3{
 	void setProductionHeightList(const std::vector<FLOAT_T>& list_prob, const std::vector<FLOAT_T>& list_bins) override{
 	    Propagator<FLOAT_T>::setProductionHeightList(list_prob, list_bins); //set host production height list
 
-	    cudaMemcpy(d_productionHeight_prob_list.get(), this->productionHeightList_prob.data(), sizeof(FLOAT_T)*NPRODHEIGHTBINS*2*3*this->n_energies*this->n_cosines, H2D); CUERR;
-	    cudaMemcpy(d_productionHeight_bins_list.get(), this->productionHeightList_bins.data(), sizeof(FLOAT_T)*(NPRODHEIGHTBINS+1), H2D); CUERR;
+	    cudaMemcpy(d_productionHeight_prob_list.get(), this->productionHeightList_prob.data(), sizeof(FLOAT_T)*Constants<FLOAT_T>::MaxProdHeightBins()*2*3*this->n_energies*this->n_cosines, H2D); CUERR;
+	    cudaMemcpy(d_productionHeight_bins_list.get(), this->productionHeightList_bins.data(), sizeof(FLOAT_T)*(Constants<FLOAT_T>::MaxProdHeightBins()+1), H2D); CUERR;
 	}
 
         // calculate the probability of each cell

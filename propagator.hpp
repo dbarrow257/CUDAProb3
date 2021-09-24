@@ -323,11 +323,11 @@ namespace cudaprob3{
 
       virtual void setProductionHeightList(const std::vector<FLOAT_T>& list_prob, const std::vector<FLOAT_T>& list_bins) {
 	
-	if (list_prob.size() != NPRODHEIGHTBINS*2*3*n_energies*n_cosines) {
+	if (list_prob.size() != Constants<FLOAT_T>::MaxProdHeightBins()*2*3*n_energies*n_cosines) {
 	  throw std::runtime_error("Propagator::setProductionHeightList. Prob array is not the expected size");
 	}
 
-	if (list_bins.size()-1 != NPRODHEIGHTBINS) {
+	if (list_bins.size()-1 != Constants<FLOAT_T>::MaxProdHeightBins()) {
 	  throw std::runtime_error("Propagator::setProductionHeightList. ProductionHeightBins array is not expected size");
 	}
 
@@ -367,9 +367,10 @@ namespace cudaprob3{
                 FLOAT_T c = cosineList[index_cosine];
                 const int maxLayer = std::count_if(coslimit.begin(), coslimit.end(), [c](FLOAT_T limit){ return c < limit;});
 
-		if (maxLayer > MAXNLAYERS) {
-		  printf("Error: MaxLayer=%d given by nMaxLayers=%d. Please increase nMaxLayers in physics.cc:%d\n", maxLayer, MAXNLAYERS, __LINE__);
-		  std::exit(-1);
+		if (maxLayer > Constants<FLOAT_T>::MaxNLayers()) {
+		  std::cerr << "Invalid number of maxLayer:" << maxLayer << std::endl;
+		  std::cerr << "Need to increase value of Constants<FLOAT_T>::MaxNLayers() in $CUDAPROB3/constants.hpp" << std::endl;
+		  throw std::runtime_error("setMaxlayers : invalid number of maxLayer");
 		}
 
                 maxlayers[index_cosine] = maxLayer;

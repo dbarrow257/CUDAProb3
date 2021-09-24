@@ -20,8 +20,6 @@ along with CUDAProb3++.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "hpc_helpers.cuh"
 
-#define NPRODHEIGHTBINS 20
-#define MAXNLAYERS 12
 #define EPSILON 1e-6
 
 namespace cudaprob3{
@@ -45,6 +43,9 @@ namespace cudaprob3{
 
         HOSTDEVICEQUALIFIER
         static constexpr int MaxProdHeightBins(){ return 20; }
+
+        HOSTDEVICEQUALIFIER
+        static constexpr int MaxNLayers(){ return 120; }
     };
 
 }
