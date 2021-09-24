@@ -82,8 +82,11 @@ namespace cudaprob3{
             ProductionHeightinCentimeter = other.ProductionHeightinCentimeter;
             isSetCosine = other.isSetCosine;
             isSetProductionHeight = other.isSetProductionHeight;
-	    useProductionHeightAveraging = other.useProductionHeightAveraging;
             isInit = other.isInit;
+
+	    nProductionHeightBins = other.nProductionHeightBins;
+
+	    useProductionHeightAveraging = other.useProductionHeightAveraging;
 
 	    productionHeightList_prob = other.productionHeightList_prob;
 	    productionHeightList_bins = other.productionHeightList_bins;
@@ -107,8 +110,13 @@ namespace cudaprob3{
             ProductionHeightinCentimeter = other.ProductionHeightinCentimeter;
             isSetCosine = other.isSetCosine;
             isSetProductionHeight = other.isSetProductionHeight;
-	    useProductionHeightAveraging = other.useProductionHeightAveraging;
             isInit = other.isInit;
+
+	    //DB Play trick on compiler to allow non-const to be cast as const - CUDA Kernal only likes consts 
+	    nProductionHeightBins = other.nProductionHeightBins;
+	    nProductionHeightBins_Ptr = &(nProductionHeightBins);
+
+	    useProductionHeightAveraging = other.useProductionHeightAveraging;
 
             productionHeightList_prob = other.productionHeightList_prob;
             productionHeightList_bins = other.productionHeightList_bins;
@@ -120,8 +128,11 @@ namespace cudaprob3{
         }
 
     public:
-      void UseProductionHeightAveraging(bool useProductionHeightAveraging_) {
-	this->useProductionHeightAveraging = useProductionHeightAveraging_;
+      void SetNumberOfProductionHeightBinsForAveraging(const int nProductionHeightBins_) {
+	this->nProductionHeightBins = nProductionHeightBins_;
+	std::cout << "Set " << *(this->nProductionHeightBins_Ptr) << " Production height bins" << std::endl;
+
+	this->useProductionHeightAveraging = true;
       }
 
         /// \brief Set density information from arrays.
@@ -376,6 +387,11 @@ namespace cudaprob3{
         FLOAT_T ProductionHeightinCentimeter;
 
         bool useProductionHeightAveraging = false;
+
+        //DB Trick compiler to set non-const to a const so we can statically allocate memory in CUDA kernal
+        int nProductionHeightBins = 0;
+        const int* nProductionHeightBins_Ptr = &(nProductionHeightBins);
+
         bool isSetProductionHeightArray = false;
         bool isSetProductionHeight = false;
         bool isSetCosine = false;

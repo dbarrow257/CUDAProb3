@@ -689,6 +689,7 @@ namespace cudaprob3{
 			 const FLOAT_T* const rhos,
 			 const int* const maxlayers,
 			 FLOAT_T ProductionHeightinCentimeter,
+			 const int nProductionHeightBins,
 			 bool useProductionHeightAveraging,
 			 const FLOAT_T* const productionHeight_prob_list, // 20 (nBins) * 2 (nu,nubar) * 3 (e,mu,tau) * n_energies * n_cosines
 			 const FLOAT_T* const productionHeight_binedges_list, // 21 (BinEdges) in cm
@@ -698,7 +699,7 @@ namespace cudaprob3{
 #ifndef __CUDA_ARCH__
 	    prepare_getMfast<FLOAT_T>(type);
 #endif
-	    
+
 #ifdef __CUDA_ARCH__
 	    // on the device, we use the global thread Id to index the data
 	    const int max_energies_per_path = SDIV(n_energies, blockDim.x) * blockDim.x;
@@ -746,7 +747,7 @@ namespace cudaprob3{
 		FLOAT_T Prob[nNuFlav][nNuFlav];
 
 		math::ComplexNumber<FLOAT_T> totalLenShiftFactor[nEig][nEig][nExp];
-		FLOAT_T PathLengthShifts[NPRODHEIGHTBINS];
+		FLOAT_T PathLengthShifts[nProductionHeightBins];
 		FLOAT_T darg0_ddistance[nNuFlav];
 
 		math::ComplexNumber<FLOAT_T> Product[nExp][nNuFlav][nNuFlav];
@@ -814,13 +815,13 @@ x		      }
 						    - (Constants<FLOAT_T>::REarthcm()*Constants<FLOAT_T>::REarthcm())*( 1 - cosine_zenith*cosine_zenith)) - Constants<FLOAT_T>::REarthcm()*cosine_zenith;
 
 		    UNROLLQUALIFIER
-		    for (int iProductionHeight=0;iProductionHeight<NPRODHEIGHTBINS;iProductionHeight++) {
-		      FLOAT_T iVal_ProdHeightInCentimeter = Constants<FLOAT_T>::km2cm() * (productionHeight_binedges_list[iProductionHeight]+productionHeight_binedges_list[iProductionHeight+1])/2.0;
-		      FLOAT_T iVal_PathLength = (sqrt((Constants<FLOAT_T>::REarthcm() + iVal_ProdHeightInCentimeter )*(Constants<FLOAT_T>::REarthcm() + iVal_ProdHeightInCentimeter)
-						      - (Constants<FLOAT_T>::REarthcm()*Constants<FLOAT_T>::REarthcm())*( 1 - cosine_zenith*cosine_zenith)) - Constants<FLOAT_T>::REarthcm()*cosine_zenith);
-
-		      PathLengthShifts[iProductionHeight] = iVal_PathLength - PathLength;
-		    }
+		      for (int iProductionHeight=0;iProductionHeight<nProductionHeightBins;iProductionHeight++) {
+			FLOAT_T iVal_ProdHeightInCentimeter = Constants<FLOAT_T>::km2cm() * (productionHeight_binedges_list[iProductionHeight]+productionHeight_binedges_list[iProductionHeight+1])/2.0;
+			FLOAT_T iVal_PathLength = (sqrt((Constants<FLOAT_T>::REarthcm() + iVal_ProdHeightInCentimeter )*(Constants<FLOAT_T>::REarthcm() + iVal_ProdHeightInCentimeter)
+							- (Constants<FLOAT_T>::REarthcm()*Constants<FLOAT_T>::REarthcm())*( 1 - cosine_zenith*cosine_zenith)) - Constants<FLOAT_T>::REarthcm()*cosine_zenith);
+			
+			PathLengthShifts[iProductionHeight] = iVal_PathLength - PathLength;
+		      }
 
 		    //============================================================================================================
 		    //DB Loop over layers		    
@@ -986,7 +987,7 @@ x		      }
 			}
 		      
 		      UNROLLQUALIFIER
-			for (int iPathLength=0;iPathLength<(NPRODHEIGHTBINS-1);iPathLength++) {
+			for (int iPathLength=0;iPathLength<(nProductionHeightBins-1);iPathLength++) {
 			  FLOAT_T h0 = PathLengthShifts[iPathLength];
 			  FLOAT_T h1 = PathLengthShifts[iPathLength+1];
 			  FLOAT_T hm = (h1+h0)/2.;
@@ -1016,8 +1017,9 @@ x		      }
 				  UNROLLQUALIFIER
 				    for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) { //In flav
 				      
-				      int ProbIndex = type*nNuFlav*n_energies*n_cosines*NPRODHEIGHTBINS + iNuFlav*n_energies*n_cosines*NPRODHEIGHTBINS
-					+ index_energy*n_cosines*NPRODHEIGHTBINS + index_cosine*NPRODHEIGHTBINS + iPathLength;
+				      int nProdHeightBins = nProductionHeightBins;
+				      int ProbIndex = type*nNuFlav*n_energies*n_cosines*nProdHeightBins + iNuFlav*n_energies*n_cosines*nProdHeightBins
+					+ index_energy*n_cosines*nProdHeightBins + index_cosine*nProdHeightBins + iPathLength;
 				      
 				      totalLenShiftFactor[iEig0][jEig0][iNuFlav].re += productionHeight_prob_list[ProbIndex] * sinc_exp_factor.re;
 				      totalLenShiftFactor[iEig0][jEig0][iNuFlav].im += productionHeight_prob_list[ProbIndex] * sinc_exp_factor.im;
@@ -1126,12 +1128,13 @@ x		      }
                                 const FLOAT_T* const rhos,
                                 const int* const maxlayers,
 				FLOAT_T ProductionHeightinCentimeter,
+				const int nProductionHeightBins,
 				bool useProductionHeightAveraging,
 				const FLOAT_T* const productionHeight_prob_list,
 				const FLOAT_T* const productionHeight_binedges_list,
                                 FLOAT_T* const result){
 
-	      calculate(type, cosinelist, n_cosines, energylist, n_energies, radii, rhos, maxlayers, ProductionHeightinCentimeter, useProductionHeightAveraging, productionHeight_prob_list, productionHeight_binedges_list, result);
+	      calculate(type, cosinelist, n_cosines, energylist, n_energies, radii, rhos, maxlayers, ProductionHeightinCentimeter, nProductionHeightBins, useProductionHeightAveraging, productionHeight_prob_list, productionHeight_binedges_list, result);
             }
 
             template<typename FLOAT_T>
@@ -1147,6 +1150,7 @@ x		      }
                                         const FLOAT_T* const rhos,
 					const int* const maxlayers,
 				        FLOAT_T ProductionHeightinCentimeter,
+					const int nProductionHeightBins,
 					bool useProductionHeightAveraging,
 		                        const FLOAT_T* const productionHeight_prob_list,
 		                        const FLOAT_T* const productionHeight_binedges_list,
@@ -1154,7 +1158,7 @@ x		      }
 
                 prepare_getMfast<FLOAT_T>(type);
 
-                calculateKernel<FLOAT_T><<<grid, block, 0, stream>>>(type, cosinelist, n_cosines, energylist, n_energies, radii, rhos, maxlayers, ProductionHeightinCentimeter, useProductionHeightAveraging, productionHeight_prob_list, productionHeight_binedges_list,  result);
+                calculateKernel<FLOAT_T><<<grid, block, 0, stream>>>(type, cosinelist, n_cosines, energylist, n_energies, radii, rhos, maxlayers, ProductionHeightinCentimeter, nProductionHeightBins, useProductionHeightAveraging, productionHeight_prob_list, productionHeight_binedges_list,  result);
                 CUERR;
 	    }
             #endif
