@@ -746,8 +746,8 @@ namespace cudaprob3{
 
 		FLOAT_T Prob[nNuFlav][nNuFlav];
 
-		math::ComplexNumber<FLOAT_T> totalLenShiftFactor[nNuFlav][nNuFlav][nExp];
-		FLOAT_T PathLengths[NPRODHEIGHTBINS];
+		math::ComplexNumber<FLOAT_T> totalLenShiftFactor[nEig][nEig][nExp];
+		FLOAT_T PathLengthShifts[NPRODHEIGHTBINS];
 		FLOAT_T darg0_ddistance[nNuFlav];
 
 		math::ComplexNumber<FLOAT_T> Product[nExp][nNuFlav][nNuFlav];
@@ -816,9 +816,12 @@ x		      }
 
 		    UNROLLQUALIFIER
 		    for (int iProductionHeight=0;iProductionHeight<NPRODHEIGHTBINS;iProductionHeight++) {
-		      FLOAT_T ProdHeightInCentimeter = Constants<FLOAT_T>::km2cm() * (productionHeight_binedges_list[iProductionHeight]+productionHeight_binedges_list[iProductionHeight+1])/2.0;
-		      PathLengths[iProductionHeight] = sqrt((Constants<FLOAT_T>::REarthcm() + ProdHeightInCentimeter )*(Constants<FLOAT_T>::REarthcm() + ProdHeightInCentimeter)
-					     - (Constants<FLOAT_T>::REarthcm()*Constants<FLOAT_T>::REarthcm())*( 1 - cosine_zenith*cosine_zenith)) - Constants<FLOAT_T>::REarthcm()*cosine_zenith;
+		      FLOAT_T iVal_ProdHeightInCentimeter = Constants<FLOAT_T>::km2cm() * (productionHeight_binedges_list[iProductionHeight]+productionHeight_binedges_list[iProductionHeight+1])/2.0;
+		      FLOAT_T iVal_PathLength = (sqrt((Constants<FLOAT_T>::REarthcm() + iVal_ProdHeightInCentimeter )*(Constants<FLOAT_T>::REarthcm() + iVal_ProdHeightInCentimeter)
+						   - (Constants<FLOAT_T>::REarthcm()*Constants<FLOAT_T>::REarthcm())*( 1 - cosine_zenith*cosine_zenith)) - Constants<FLOAT_T>::REarthcm()*cosine_zenith;
+
+		      PathLengthShifts[iProductionHeight] = iVal_PathLength - ProductionHeightinCentimeter;
+						   
 		    }
 
 		    //============================================================================================================
@@ -986,8 +989,8 @@ x		      }
 		      
 		      UNROLLQUALIFIER
 			for (int iPathLength=0;iPathLength<(NPRODHEIGHTBINS-1);iPathLength++) {
-			  FLOAT_T h0 = PathLengths[iPathLength];
-			  FLOAT_T h1 = PathLengths[iPathLength+1];
+			  FLOAT_T h0 = PathLengthShifts[iPathLength];
+			  FLOAT_T h1 = PathLengthShifts[iPathLength+1];
 			  FLOAT_T hm = (h1+h0)/2.;
 			  FLOAT_T hw = (h1-h0);
 			  
@@ -1003,8 +1006,8 @@ x		      }
 				  //exp(factor).re = exp(f.re)*cos(f.im) = cos(darg_distance*hm)
 				  //exp(factor).im = exp(f.re)*sin(f.im) = sin(darg_distance*hm)
 				  //
-				  //sinc(0.5 * darg_distance * hw) * exp(factor).re = sinc(0.5 * darg_distance * hw) * cos(darg_distance*hm)
-				  //sinc(0.5 * darg_distance * hw) * exp(factor).re = sinc(0.5 * darg_distance * hw) * sin(darg_distance*hm)
+				  //sinc(0.5 * darg_distance * hw) * exp(factor).re = sinc(0.5 * darg_distance * hw) * cos(darg_distance * hm)
+				  //sinc(0.5 * darg_distance * hw) * exp(factor).re = sinc(0.5 * darg_distance * hw) * sin(darg_distance * hm)
 				  
 				  math::ComplexNumber<FLOAT_T> sinc_exp_factor; 
 				  FLOAT_T Sinc_Arg = 0.5 * darg_distance * hw;
