@@ -19,6 +19,7 @@ along with CUDAProb3++.  If not, see <http://www.gnu.org/licenses/>.
 #define CUDAPROB3_MATH_HPP
 
 #include "hpc_helpers.cuh"
+#include "constants.hpp"
 
 namespace cudaprob3{
 
@@ -45,7 +46,7 @@ namespace cudaprob3{
         template<typename FLOAT_T>
 	HOSTDEVICEQUALIFIER
 	FLOAT_T defined_sinc(FLOAT_T A) {
-	  if (abs(A) >= EPSILON) {
+	  if (abs(A) >= Constants<FLOAT_T>::Epsilon()) {
 	    return sin(A)/A;
 	  } else {
 	    return FLOAT_T(1) - A*A/6. + A*A*A*A/120.;

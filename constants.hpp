@@ -20,8 +20,6 @@ along with CUDAProb3++.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "hpc_helpers.cuh"
 
-#define EPSILON 1e-6
-
 namespace cudaprob3{
 
     template<typename FLOAT_T>
@@ -45,7 +43,10 @@ namespace cudaprob3{
         static constexpr int MaxProdHeightBins(){ return 20; }
 
         HOSTDEVICEQUALIFIER
-        static constexpr int MaxNLayers(){ return 120; }
+        static constexpr int MaxNLayers(){ return 10; }
+      
+        HOSTDEVICEQUALIFIER
+	static constexpr FLOAT_T Epsilon(){ return 1e-6; }
     };
 
 }
