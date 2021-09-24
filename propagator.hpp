@@ -128,11 +128,16 @@ namespace cudaprob3{
         }
 
     public:
-      void SetNumberOfProductionHeightBinsForAveraging(const int nProductionHeightBins_) {
+      void SetNumberOfProductionHeightBinsForAveraging(int nProductionHeightBins_) {
 	this->nProductionHeightBins = nProductionHeightBins_;
-	std::cout << "Set " << *(this->nProductionHeightBins_Ptr) << " Production height bins" << std::endl;
 
-	this->useProductionHeightAveraging = true;
+	if (this->nProductionHeightBins >= 1) {
+	  this->useProductionHeightAveraging = true;
+	}
+
+	if (this->useProductionHeightAveraging == true) {
+	  std::cout << "Set " << *(this->nProductionHeightBins_Ptr) << " Production height bins" << std::endl;
+	}
       }
 
         /// \brief Set density information from arrays.
@@ -357,6 +362,12 @@ namespace cudaprob3{
             for(int index_cosine = 0; index_cosine < n_cosines; index_cosine++){
                 FLOAT_T c = cosineList[index_cosine];
                 const int maxLayer = std::count_if(coslimit.begin(), coslimit.end(), [c](FLOAT_T limit){ return c < limit;});
+
+		if (maxLayer > MAXNLAYERS) {
+		  printf("Error: MaxLayer=%d given by nMaxLayers=%d. Please increase nMaxLayers in physics.cc:%d\n", maxLayer, MAXNLAYERS, __LINE__);
+		  std::exit(-1);
+		}
+
                 maxlayers[index_cosine] = maxLayer;
             }
         }

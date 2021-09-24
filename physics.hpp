@@ -689,7 +689,6 @@ namespace cudaprob3{
 			 const FLOAT_T* const rhos,
 			 const int* const maxlayers,
 			 FLOAT_T ProductionHeightinCentimeter,
-			 const int nProductionHeightBins,
 			 bool useProductionHeightAveraging,
 			 const FLOAT_T* const productionHeight_prob_list, // 20 (nBins) * 2 (nu,nubar) * 3 (e,mu,tau) * n_energies * n_cosines
 			 const FLOAT_T* const productionHeight_binedges_list, // 21 (BinEdges) in cm
@@ -724,12 +723,7 @@ namespace cudaprob3{
 
 		FLOAT_T phaseOffset = 0.;
 
-		const int nMaxLayers = 8;
-		//DB Should check this when maxlayers is set
-		if (MaxLayer > nMaxLayers) {
-		  printf("Error: MaxLayer=%d given by nMaxLayers=%d. Please increase nMaxLayers in physics.cc:%d\n", MaxLayer, nMaxLayers, __LINE__);
-		  std::exit(-1);
-		}
+		const int nMaxLayers = MAXNLAYERS;
 
 		math::ComplexNumber<FLOAT_T> TransitionMatrix[nNuFlav][nNuFlav];
 		math::ComplexNumber<FLOAT_T> TransitionMatrixCoreToMantle[nNuFlav][nNuFlav];
@@ -747,7 +741,6 @@ namespace cudaprob3{
 		FLOAT_T Prob[nNuFlav][nNuFlav];
 
 		math::ComplexNumber<FLOAT_T> totalLenShiftFactor[nEig][nEig][nExp];
-		FLOAT_T PathLengthShifts[nProductionHeightBins];
 		FLOAT_T darg0_ddistance[nNuFlav];
 
 		math::ComplexNumber<FLOAT_T> Product[nExp][nNuFlav][nNuFlav];
@@ -762,22 +755,6 @@ namespace cudaprob3{
 		    //============================================================================================================
 		    //DB Reset all the values
 
-		    /*
-		    for (int iLayer=0;iLayer<nMaxLayers;iLayer++) {
-		      for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
-			clear_complex_matrix(ExpansionMatrix[iLayer][iNuFlav]);
-x		      }
-		    }
-		    */
-
-		    UNROLLQUALIFIER
-		      for (int iLayer=0;iLayer<nMaxLayers;iLayer++) {
-			UNROLLQUALIFIER
-			  for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
-			    arg[iLayer][iNuFlav] = 0.;
-			  }
-		      }
-		    
 		    UNROLLQUALIFIER
 		      for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
 			UNROLLQUALIFIER
@@ -786,13 +763,6 @@ x		      }
 			  }
 		      }
 		    
-		    /*
-		    UNROLLQUALIFIER
-		    for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) {
-		      darg0_ddistance[iNuFlav] = 0.;
-		    }
-		    */
-
 		    for (int iExp=0;iExp<nExp;iExp++) {
 		      clear_complex_matrix(Product[iExp]);
 		    }
@@ -813,15 +783,6 @@ x		      }
 		    //DB PathLength is used to calculate the distance traversed
 		    const FLOAT_T PathLength = sqrt((Constants<FLOAT_T>::REarthcm() + ProductionHeightinCentimeter )*(Constants<FLOAT_T>::REarthcm() + ProductionHeightinCentimeter)
 						    - (Constants<FLOAT_T>::REarthcm()*Constants<FLOAT_T>::REarthcm())*( 1 - cosine_zenith*cosine_zenith)) - Constants<FLOAT_T>::REarthcm()*cosine_zenith;
-
-		    UNROLLQUALIFIER
-		      for (int iProductionHeight=0;iProductionHeight<nProductionHeightBins;iProductionHeight++) {
-			FLOAT_T iVal_ProdHeightInCentimeter = Constants<FLOAT_T>::km2cm() * (productionHeight_binedges_list[iProductionHeight]+productionHeight_binedges_list[iProductionHeight+1])/2.0;
-			FLOAT_T iVal_PathLength = (sqrt((Constants<FLOAT_T>::REarthcm() + iVal_ProdHeightInCentimeter )*(Constants<FLOAT_T>::REarthcm() + iVal_ProdHeightInCentimeter)
-							- (Constants<FLOAT_T>::REarthcm()*Constants<FLOAT_T>::REarthcm())*( 1 - cosine_zenith*cosine_zenith)) - Constants<FLOAT_T>::REarthcm()*cosine_zenith);
-			
-			PathLengthShifts[iProductionHeight] = iVal_PathLength - PathLength;
-		      }
 
 		    //============================================================================================================
 		    //DB Loop over layers		    
@@ -985,6 +946,18 @@ x		      }
 				}
 			    }
 			}
+
+		      const int nProductionHeightBins = NPRODHEIGHTBINS;
+		      FLOAT_T PathLengthShifts[nProductionHeightBins];
+
+		      UNROLLQUALIFIER
+			for (int iProductionHeight=0;iProductionHeight<nProductionHeightBins;iProductionHeight++) {
+			  FLOAT_T iVal_ProdHeightInCentimeter = Constants<FLOAT_T>::km2cm() * (productionHeight_binedges_list[iProductionHeight]+productionHeight_binedges_list[iProductionHeight+1])/2.0;
+			  FLOAT_T iVal_PathLength = (sqrt((Constants<FLOAT_T>::REarthcm() + iVal_ProdHeightInCentimeter )*(Constants<FLOAT_T>::REarthcm() + iVal_ProdHeightInCentimeter)
+							  - (Constants<FLOAT_T>::REarthcm()*Constants<FLOAT_T>::REarthcm())*( 1 - cosine_zenith*cosine_zenith)) - Constants<FLOAT_T>::REarthcm()*cosine_zenith);
+			  
+			  PathLengthShifts[iProductionHeight] = iVal_PathLength - PathLength;
+			}
 		      
 		      UNROLLQUALIFIER
 			for (int iPathLength=0;iPathLength<(nProductionHeightBins-1);iPathLength++) {
@@ -1017,9 +990,8 @@ x		      }
 				  UNROLLQUALIFIER
 				    for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) { //In flav
 				      
-				      int nProdHeightBins = nProductionHeightBins;
-				      int ProbIndex = type*nNuFlav*n_energies*n_cosines*nProdHeightBins + iNuFlav*n_energies*n_cosines*nProdHeightBins
-					+ index_energy*n_cosines*nProdHeightBins + index_cosine*nProdHeightBins + iPathLength;
+				      int ProbIndex = type*nNuFlav*n_energies*n_cosines*nProductionHeightBins + iNuFlav*n_energies*n_cosines*nProductionHeightBins
+					+ index_energy*n_cosines*nProductionHeightBins + index_cosine*nProductionHeightBins + iPathLength;
 				      
 				      totalLenShiftFactor[iEig0][jEig0][iNuFlav].re += productionHeight_prob_list[ProbIndex] * sinc_exp_factor.re;
 				      totalLenShiftFactor[iEig0][jEig0][iNuFlav].im += productionHeight_prob_list[ProbIndex] * sinc_exp_factor.im;
@@ -1128,13 +1100,12 @@ x		      }
                                 const FLOAT_T* const rhos,
                                 const int* const maxlayers,
 				FLOAT_T ProductionHeightinCentimeter,
-				const int nProductionHeightBins,
 				bool useProductionHeightAveraging,
 				const FLOAT_T* const productionHeight_prob_list,
 				const FLOAT_T* const productionHeight_binedges_list,
                                 FLOAT_T* const result){
 
-	      calculate(type, cosinelist, n_cosines, energylist, n_energies, radii, rhos, maxlayers, ProductionHeightinCentimeter, nProductionHeightBins, useProductionHeightAveraging, productionHeight_prob_list, productionHeight_binedges_list, result);
+	      calculate(type, cosinelist, n_cosines, energylist, n_energies, radii, rhos, maxlayers, ProductionHeightinCentimeter, useProductionHeightAveraging, productionHeight_prob_list, productionHeight_binedges_list, result);
             }
 
             template<typename FLOAT_T>
@@ -1150,7 +1121,6 @@ x		      }
                                         const FLOAT_T* const rhos,
 					const int* const maxlayers,
 				        FLOAT_T ProductionHeightinCentimeter,
-					const int nProductionHeightBins,
 					bool useProductionHeightAveraging,
 		                        const FLOAT_T* const productionHeight_prob_list,
 		                        const FLOAT_T* const productionHeight_binedges_list,
@@ -1158,7 +1128,7 @@ x		      }
 
                 prepare_getMfast<FLOAT_T>(type);
 
-                calculateKernel<FLOAT_T><<<grid, block, 0, stream>>>(type, cosinelist, n_cosines, energylist, n_energies, radii, rhos, maxlayers, ProductionHeightinCentimeter, nProductionHeightBins, useProductionHeightAveraging, productionHeight_prob_list, productionHeight_binedges_list,  result);
+                calculateKernel<FLOAT_T><<<grid, block, 0, stream>>>(type, cosinelist, n_cosines, energylist, n_energies, radii, rhos, maxlayers, ProductionHeightinCentimeter, useProductionHeightAveraging, productionHeight_prob_list, productionHeight_binedges_list,  result);
                 CUERR;
 	    }
             #endif
