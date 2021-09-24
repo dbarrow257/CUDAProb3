@@ -85,7 +85,6 @@ namespace cudaprob3{
             isInit = other.isInit;
 
 	    nProductionHeightBins = other.nProductionHeightBins;
-
 	    useProductionHeightAveraging = other.useProductionHeightAveraging;
 
 	    productionHeightList_prob = other.productionHeightList_prob;
@@ -112,10 +111,7 @@ namespace cudaprob3{
             isSetProductionHeight = other.isSetProductionHeight;
             isInit = other.isInit;
 
-	    //DB Play trick on compiler to allow non-const to be cast as const - CUDA Kernal only likes consts 
 	    nProductionHeightBins = other.nProductionHeightBins;
-	    nProductionHeightBins_Ptr = &(nProductionHeightBins);
-
 	    useProductionHeightAveraging = other.useProductionHeightAveraging;
 
             productionHeightList_prob = other.productionHeightList_prob;
@@ -129,6 +125,12 @@ namespace cudaprob3{
 
     public:
       void SetNumberOfProductionHeightBinsForAveraging(int nProductionHeightBins_) {
+	if (nProductionHeightBins_ > Constants<FLOAT_T>::MaxProdHeightBins()) {
+	  std::cerr << "Invalid number of production height averages:" << nProductionHeightBins_ << std::endl;
+	  std::cerr << "Need to increase value of Constants<FLOAT_T>::MaxProdHeightBins() in $CUDAPROB3/constants.hpp" << std::endl;
+	  throw std::runtime_error("SetNumberOfProductionHeightBinsForAveraging : invalid number of production height bins");
+	}
+
 	this->nProductionHeightBins = nProductionHeightBins_;
 
 	if (this->nProductionHeightBins >= 1) {
@@ -136,7 +138,9 @@ namespace cudaprob3{
 	}
 
 	if (this->useProductionHeightAveraging == true) {
-	  std::cout << "Set " << *(this->nProductionHeightBins_Ptr) << " Production height bins" << std::endl;
+	  std::cout << "Set " << this->nProductionHeightBins << " Production height bins" << std::endl;
+	} else {
+	  std::cout << "Using fixed production height" << std::endl;
 	}
       }
 
@@ -398,10 +402,7 @@ namespace cudaprob3{
         FLOAT_T ProductionHeightinCentimeter;
 
         bool useProductionHeightAveraging = false;
-
-        //DB Trick compiler to set non-const to a const so we can statically allocate memory in CUDA kernal
         int nProductionHeightBins = 0;
-        const int* nProductionHeightBins_Ptr = &(nProductionHeightBins);
 
         bool isSetProductionHeightArray = false;
         bool isSetProductionHeight = false;

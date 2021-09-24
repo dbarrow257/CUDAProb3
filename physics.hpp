@@ -690,6 +690,7 @@ namespace cudaprob3{
 			 const int* const maxlayers,
 			 FLOAT_T ProductionHeightinCentimeter,
 			 bool useProductionHeightAveraging,
+			 int nProductionHeightBins,
 			 const FLOAT_T* const productionHeight_prob_list, // 20 (nBins) * 2 (nu,nubar) * 3 (e,mu,tau) * n_energies * n_cosines
 			 const FLOAT_T* const productionHeight_binedges_list, // 21 (BinEdges) in cm
 			 FLOAT_T* const result){
@@ -947,8 +948,8 @@ namespace cudaprob3{
 			    }
 			}
 
-		      const int nProductionHeightBins = NPRODHEIGHTBINS;
-		      FLOAT_T PathLengthShifts[nProductionHeightBins];
+		      const int nMaxProductionHeightBins = Constants<FLOAT_T>::MaxProdHeightBins();
+		      FLOAT_T PathLengthShifts[nMaxProductionHeightBins];
 
 		      UNROLLQUALIFIER
 			for (int iProductionHeight=0;iProductionHeight<nProductionHeightBins;iProductionHeight++) {
@@ -1101,11 +1102,12 @@ namespace cudaprob3{
                                 const int* const maxlayers,
 				FLOAT_T ProductionHeightinCentimeter,
 				bool useProductionHeightAveraging,
+				int nProductionHeightBins,
 				const FLOAT_T* const productionHeight_prob_list,
 				const FLOAT_T* const productionHeight_binedges_list,
                                 FLOAT_T* const result){
 
-	      calculate(type, cosinelist, n_cosines, energylist, n_energies, radii, rhos, maxlayers, ProductionHeightinCentimeter, useProductionHeightAveraging, productionHeight_prob_list, productionHeight_binedges_list, result);
+	      calculate(type, cosinelist, n_cosines, energylist, n_energies, radii, rhos, maxlayers, ProductionHeightinCentimeter, useProductionHeightAveraging, nProductionHeightBins, productionHeight_prob_list, productionHeight_binedges_list, result);
             }
 
             template<typename FLOAT_T>
@@ -1122,13 +1124,14 @@ namespace cudaprob3{
 					const int* const maxlayers,
 				        FLOAT_T ProductionHeightinCentimeter,
 					bool useProductionHeightAveraging,
+					int nProductionHeightBins,
 		                        const FLOAT_T* const productionHeight_prob_list,
 		                        const FLOAT_T* const productionHeight_binedges_list,
                                         FLOAT_T* const result){
 
                 prepare_getMfast<FLOAT_T>(type);
 
-                calculateKernel<FLOAT_T><<<grid, block, 0, stream>>>(type, cosinelist, n_cosines, energylist, n_energies, radii, rhos, maxlayers, ProductionHeightinCentimeter, useProductionHeightAveraging, productionHeight_prob_list, productionHeight_binedges_list,  result);
+                calculateKernel<FLOAT_T><<<grid, block, 0, stream>>>(type, cosinelist, n_cosines, energylist, n_energies, radii, rhos, maxlayers, ProductionHeightinCentimeter, useProductionHeightAveraging, nProductionHeightBins, productionHeight_prob_list, productionHeight_binedges_list,  result);
                 CUERR;
 	    }
             #endif

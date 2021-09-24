@@ -42,6 +42,9 @@ namespace cudaprob3{
 
         HOSTDEVICEQUALIFIER
         static constexpr FLOAT_T density_convert(){ return 0.5; }
+
+        HOSTDEVICEQUALIFIER
+        static constexpr int MaxProdHeightBins(){ return 20; }
     };
 
 }
