@@ -334,21 +334,33 @@ namespace cudaprob3{
         }
 
       virtual void setProductionHeightList(const std::vector<FLOAT_T>& list_prob, const std::vector<FLOAT_T>& list_bins) {
-	
-	if (list_prob.size() != Constants<FLOAT_T>::MaxProdHeightBins()*2*3*n_energies*n_cosines) {
-	  throw std::runtime_error("Propagator::setProductionHeightList. Prob array is not the expected size");
+	if (!this->useProductionHeightAveraging) {
+	  throw std::runtime_error("Propagator::setProductionHeightList. Trying to set Production Height information but propagator is not expecting to use it");
 	}
 
-	if (list_bins.size()-1 != Constants<FLOAT_T>::MaxProdHeightBins()) {
+	if (list_prob.size() != this->nProductionHeightBins*2*3*n_energies*n_cosines) {
+	  throw std::runtime_error("Propagator::setProductionHeightList. Prob array is not the expected size");
+	}
+          
+	if (list_bins.size()-1 != this->nProductionHeightBins) {
 	  throw std::runtime_error("Propagator::setProductionHeightList. ProductionHeightBins array is not expected size");
 	}
 
-	productionHeightList_prob = std::vector<FLOAT_T>(list_prob.size());
+	int MaxSize = Constants<FLOAT_T>::MaxProdHeightBins()*2*3*n_energies*n_cosines;
+	productionHeightList_prob = std::vector<FLOAT_T>(MaxSize);
+	for (unsigned int i=0;i<MaxSize;i++) {
+	  productionHeightList_prob[i] = 0.;
+	}
+
 	for (unsigned int i=0;i<list_prob.size();i++) {
 	  productionHeightList_prob[i] = list_prob[i];
 	}
 
-	productionHeightList_bins = std::vector<FLOAT_T>(list_bins.size());
+	productionHeightList_bins = std::vector<FLOAT_T>(Constants<FLOAT_T>::MaxProdHeightBins());
+	for (unsigned int i=0;i<Constants<FLOAT_T>::MaxProdHeightBins();i++) {
+	  productionHeightList_bins[i] = 0.;
+	}
+
 	for (unsigned int i=0;i<list_bins.size();i++) {
 	  productionHeightList_bins[i] = list_bins[i];
 	}
@@ -356,9 +368,9 @@ namespace cudaprob3{
 	isSetProductionHeightArray = true;
       }
 
-      /// \brief Set chemical composition of each layer in the Earth model                                                                                                                                  
-      /// \details Set chemical composition of each layer in the Earth model                                                                                                                                
-      /// @param                                                                                                                                                                                            
+      /// \brief Set chemical composition of each layer in the Earth model
+      /// \details Set chemical composition of each layer in the Earth model
+      /// @param
       virtual void setChemicalComposition(const std::vector<FLOAT_T>& list) = 0;
 
         /// \brief Calculate the probability of each cell
