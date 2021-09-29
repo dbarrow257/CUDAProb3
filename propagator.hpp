@@ -75,6 +75,7 @@ namespace cudaprob3{
             maxlayers = other.maxlayers;
             radii = other.radii;
             rhos = other.rhos;
+	    yps = other.yps;
             coslimit = other.coslimit;
             Mix_U = other.Mix_U;
             dm = other.dm;
@@ -83,6 +84,13 @@ namespace cudaprob3{
             isSetCosine = other.isSetCosine;
             isSetProductionHeight = other.isSetProductionHeight;
             isInit = other.isInit;
+
+	    nProductionHeightBins = other.nProductionHeightBins;
+	    useProductionHeightAveraging = other.useProductionHeightAveraging;
+
+	    productionHeightList_prob = other.productionHeightList_prob;
+	    productionHeightList_bins = other.productionHeightList_bins;
+	    isSetProductionHeightArray = other.isSetProductionHeightArray;
 
             return *this;
         }
@@ -95,6 +103,7 @@ namespace cudaprob3{
             maxlayers = std::move(other.maxlayers);
             radii = std::move(other.radii);
             rhos = std::move(other.rhos);
+	    yps = std::move(other.yps);
             coslimit = std::move(other.coslimit);
             Mix_U = std::move(other.Mix_U);
             dm = std::move(other.dm);
@@ -104,26 +113,58 @@ namespace cudaprob3{
             isSetProductionHeight = other.isSetProductionHeight;
             isInit = other.isInit;
 
+	    nProductionHeightBins = other.nProductionHeightBins;
+	    useProductionHeightAveraging = other.useProductionHeightAveraging;
+
+            productionHeightList_prob = other.productionHeightList_prob;
+            productionHeightList_bins = other.productionHeightList_bins;
+            isSetProductionHeightArray = other.isSetProductionHeightArray;
+
             other.isInit = false;
 
             return *this;
         }
 
     public:
+      void SetNumberOfProductionHeightBinsForAveraging(int nProductionHeightBins_) {
+	if (nProductionHeightBins_ > Constants<FLOAT_T>::MaxProdHeightBins()) {
+	  std::cerr << "Invalid number of production height averages:" << nProductionHeightBins_ << std::endl;
+	  std::cerr << "Need to increase value of Constants<FLOAT_T>::MaxProdHeightBins() in $CUDAPROB3/constants.hpp" << std::endl;
+	  throw std::runtime_error("SetNumberOfProductionHeightBinsForAveraging : invalid number of production height bins");
+	}
+
+	this->nProductionHeightBins = nProductionHeightBins_;
+
+	if (this->nProductionHeightBins >= 1) {
+	  this->useProductionHeightAveraging = true;
+	}
+
+	if (this->useProductionHeightAveraging == true) {
+	  std::cout << "Set " << this->nProductionHeightBins << " Production height bins" << std::endl;
+	} else {
+	  std::cout << "Using fixed production height" << std::endl;
+	}
+      }
+
         /// \brief Set density information from arrays.
         /// \details radii_ and rhos_ must be same size. both radii_ and rhos_ must be sorted, in the same order.
         /// The density (g/cm^3) at a distance (km) from the center of the sphere between radii_[i], exclusive,
         /// and radii_[j], inclusive, i < j  is assumed to be rhos_[j]
         /// @param radii_ List of radii
         /// @param rhos_ List of densities
-      virtual void setDensity(const std::vector<FLOAT_T>& radii_, const std::vector<FLOAT_T>& rhos_){
+        /// @param yps_ List of chemical compositions
+      virtual void setDensity(const std::vector<FLOAT_T>& radii_, const std::vector<FLOAT_T>& rhos_, const std::vector<FLOAT_T>& yps_){
 
             if(rhos_.size() != radii_.size()){
                 throw std::runtime_error("setDensity : rhos.size() != radii.size()");
             }
 
-            if(rhos_.size() == 0 || radii_.size() == 0){
-                throw std::runtime_error("setDensity : vectors must not be empty");
+            if(rhos_.size() != yps_.size()){
+	      throw std::runtime_error("setDensity : rhos.size() != yps.size()");
+            }
+
+            if(rhos_.size() == 0 || radii_.size() == 0 || yps_.size() == 0){
+	      throw std::runtime_error("setDensity : vectors must not be empty");
             }
 
             bool needFlip = false;
@@ -142,10 +183,12 @@ namespace cudaprob3{
 
             radii = radii_;
             rhos = rhos_;
+	    yps = yps_;
 
             if(needFlip){
                 std::reverse(radii.begin(), radii.end());
                 std::reverse(rhos.begin(), rhos.end());
+		std::reverse(yps.begin(), yps.end());
             }
 
             coslimit.clear();
@@ -175,14 +218,17 @@ namespace cudaprob3{
 
             std::vector<FLOAT_T> radii;
             std::vector<FLOAT_T> rhos;
+	    std::vector<FLOAT_T> yps;
             FLOAT_T r;
             FLOAT_T d;
-            while (file >> r >> d){
+	    FLOAT_T yp;
+            while (file >> r >> d >> yp){
                 radii.push_back(r);
                 rhos.push_back(d);
+		yps.push_back(yp);
             }
 
-            setDensity(radii, rhos);
+            setDensity(radii, rhos, yps);
         }
 
         /// \brief Set mixing angles and cp phase in radians
@@ -287,6 +333,46 @@ namespace cudaprob3{
             isSetProductionHeight = true;
         }
 
+      virtual void setProductionHeightList(const std::vector<FLOAT_T>& list_prob, const std::vector<FLOAT_T>& list_bins) {
+	if (!this->useProductionHeightAveraging) {
+	  throw std::runtime_error("Propagator::setProductionHeightList. Trying to set Production Height information but propagator is not expecting to use it");
+	}
+
+	if (list_prob.size() != this->nProductionHeightBins*2*3*n_energies*n_cosines) {
+	  throw std::runtime_error("Propagator::setProductionHeightList. Prob array is not the expected size");
+	}
+          
+	if (list_bins.size()-1 != this->nProductionHeightBins) {
+	  throw std::runtime_error("Propagator::setProductionHeightList. ProductionHeightBins array is not expected size");
+	}
+
+	int MaxSize = Constants<FLOAT_T>::MaxProdHeightBins()*2*3*n_energies*n_cosines;
+	productionHeightList_prob = std::vector<FLOAT_T>(MaxSize);
+	for (unsigned int i=0;i<MaxSize;i++) {
+	  productionHeightList_prob[i] = 0.;
+	}
+
+	for (unsigned int i=0;i<list_prob.size();i++) {
+	  productionHeightList_prob[i] = list_prob[i];
+	}
+
+	productionHeightList_bins = std::vector<FLOAT_T>(Constants<FLOAT_T>::MaxProdHeightBins()+1);
+	for (unsigned int i=0;i<Constants<FLOAT_T>::MaxProdHeightBins();i++) {
+	  productionHeightList_bins[i] = 0.;
+	}
+
+	for (unsigned int i=0;i<list_bins.size();i++) {
+	  productionHeightList_bins[i] = list_bins[i];
+	}
+	
+	isSetProductionHeightArray = true;
+      }
+
+      /// \brief Set chemical composition of each layer in the Earth model
+      /// \details Set chemical composition of each layer in the Earth model
+      /// @param
+      virtual void setChemicalComposition(const std::vector<FLOAT_T>& list) = 0;
+
         /// \brief Calculate the probability of each cell
         /// @param type Neutrino or Antineutrino
         virtual void calculateProbabilities(NeutrinoType type) = 0;
@@ -309,6 +395,13 @@ namespace cudaprob3{
             for(int index_cosine = 0; index_cosine < n_cosines; index_cosine++){
                 FLOAT_T c = cosineList[index_cosine];
                 const int maxLayer = std::count_if(coslimit.begin(), coslimit.end(), [c](FLOAT_T limit){ return c < limit;});
+
+		if (maxLayer > Constants<FLOAT_T>::MaxNLayers()) {
+		  std::cerr << "Invalid number of maxLayer:" << maxLayer << std::endl;
+		  std::cerr << "Need to increase value of Constants<FLOAT_T>::MaxNLayers() in $CUDAPROB3/constants.hpp" << std::endl;
+		  throw std::runtime_error("setMaxlayers : invalid number of maxLayer");
+		}
+
                 maxlayers[index_cosine] = maxLayer;
             }
         }
@@ -326,8 +419,12 @@ namespace cudaprob3{
         std::vector<int> maxlayers;
         //std::vector<FLOAT_T> pathLengths;
 
+        std::vector<FLOAT_T> productionHeightList_prob;
+        std::vector<FLOAT_T> productionHeightList_bins;
+
         std::vector<FLOAT_T> radii;
         std::vector<FLOAT_T> rhos;
+        std::vector<FLOAT_T> yps;
         std::vector<FLOAT_T> coslimit;
 
         std::array<cudaprob3::math::ComplexNumber<FLOAT_T>, 9> Mix_U; // MNS mixing matrix
@@ -335,6 +432,10 @@ namespace cudaprob3{
 
         FLOAT_T ProductionHeightinCentimeter;
 
+        bool useProductionHeightAveraging = false;
+        int nProductionHeightBins = 0;
+
+        bool isSetProductionHeightArray = false;
         bool isSetProductionHeight = false;
         bool isSetCosine = false;
         bool isInit = true;

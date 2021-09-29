@@ -75,6 +75,8 @@ namespace cudaprob3{
             //allocate GPU arrays
             d_energy_list = make_unique_dev<FLOAT_T>(deviceId, n_energies_); CUERR;
             d_cosine_list = make_unique_dev<FLOAT_T>(deviceId, n_cosines_); CUERR;
+            d_productionHeight_prob_list = make_unique_dev<FLOAT_T>(deviceId, Constants<FLOAT_T>::MaxProdHeightBins()*2*3*n_energies_*n_cosines_); CUERR;
+            d_productionHeight_bins_list = make_unique_dev<FLOAT_T>(deviceId, Constants<FLOAT_T>::MaxProdHeightBins()+1); CUERR;
             d_result_list = make_shared_dev<FLOAT_T>(deviceId, std::uint64_t(n_cosines_) * std::uint64_t(n_energies_) * std::uint64_t(9)); CUERR;
             d_maxlayers = make_unique_dev<int>(deviceId, this->n_cosines);
         }
@@ -113,10 +115,13 @@ namespace cudaprob3{
 
             resultList = std::move(other.resultList);
             d_rhos = std::move(other.d_rhos);
+	    d_yps = std::move(other.d_yps);
             d_radii = std::move(other.d_radii);
             d_maxlayers = std::move(other.d_maxlayers);
             d_energy_list = std::move(other.d_energy_list);
             d_cosine_list = std::move(other.d_cosine_list);
+            d_productionHeight_prob_list = std::move(other.d_productionHeight_prob_list);
+            d_productionHeight_bins_list = std::move(other.d_productionHeight_bins_list);
             d_result_list = std::move(other.d_result_list);
 
             deviceId = other.deviceId;
@@ -129,19 +134,21 @@ namespace cudaprob3{
 
     public:
 
-        void setDensity(const std::vector<FLOAT_T>& radii_, const std::vector<FLOAT_T>& rhos_) override{
+        void setDensity(const std::vector<FLOAT_T>& radii_, const std::vector<FLOAT_T>& rhos_, const std::vector<FLOAT_T>& yps_) override{
             // call parent function to set up host density data
-            Propagator<FLOAT_T>::setDensity(radii_, rhos_);
+            Propagator<FLOAT_T>::setDensity(radii_, rhos_, yps_);
 
             // allocate GPU arrays for density information and copy host density data to device density data
             cudaSetDevice(deviceId); CUERR;
 
             int nDensityLayers = this->radii.size();
-
+	    
             d_rhos = make_unique_dev<FLOAT_T>(deviceId, 2 * nDensityLayers + 1);
+	    d_yps = make_unique_dev<FLOAT_T>(deviceId, 2 * nDensityLayers + 1);
             d_radii = make_unique_dev<FLOAT_T>(deviceId, 2 * nDensityLayers + 1);
 
             cudaMemcpy(d_rhos.get(), this->rhos.data(), sizeof(FLOAT_T) * nDensityLayers, H2D); CUERR;
+	    cudaMemcpy(d_yps.get(), this->yps.data(), sizeof(FLOAT_T) * nDensityLayers, H2D); CUERR;
             cudaMemcpy(d_radii.get(), this->radii.data(), sizeof(FLOAT_T) * nDensityLayers, H2D); CUERR;
         }
 
@@ -158,10 +165,31 @@ namespace cudaprob3{
             cudaMemcpy(d_cosine_list.get(), this->cosineList.data(), sizeof(FLOAT_T) * this->n_cosines, H2D); CUERR;
         }
 
+	void setProductionHeightList(const std::vector<FLOAT_T>& list_prob, const std::vector<FLOAT_T>& list_bins) override{
+	    Propagator<FLOAT_T>::setProductionHeightList(list_prob, list_bins); //set host production height list
+
+	    cudaMemcpy(d_productionHeight_prob_list.get(), this->productionHeightList_prob.data(), sizeof(FLOAT_T)*Constants<FLOAT_T>::MaxProdHeightBins()*2*3*this->n_energies*this->n_cosines, H2D); CUERR;
+	    cudaMemcpy(d_productionHeight_bins_list.get(), this->productionHeightList_bins.data(), sizeof(FLOAT_T)*(Constants<FLOAT_T>::MaxProdHeightBins()+1), H2D); CUERR;
+	}
+
         // calculate the probability of each cell
         void calculateProbabilities(NeutrinoType type) override{
             calculateProbabilitiesAsync(type);
             waitForCompletion();
+        }
+
+        void setChemicalComposition(const std::vector<FLOAT_T>& list) override{
+          if (list.size() != this->yps.size()) {
+            throw std::runtime_error("CpuPropagator::setChemicalComposition. Size of input list not equal to expectation.");
+          }
+
+          for (int iyp=0;iyp<list.size();iyp++) {
+            this->yps[iyp] = list[iyp];
+          }
+
+          int nDensityLayers = this->radii.size();
+
+          cudaMemcpy(d_yps.get(), this->yps.data(), sizeof(FLOAT_T) * nDensityLayers, H2D); CUERR;
         }
 
         // get oscillation weight for specific cosine and energy
@@ -215,6 +243,8 @@ namespace cudaprob3{
                 throw std::runtime_error("CudaPropagatorSingle::calculateProbabilities. Object has been moved from.");
             if(!this->isSetProductionHeight)
                 throw std::runtime_error("CudaPropagatorSingle::calculateProbabilities. production height was not set");
+            if(this->useProductionHeightAveraging && !this->isSetProductionHeightArray)
+                throw std::runtime_error("CudaPropagatorSingle::calculateProbabilities. production height array was not set");
 
             resultsResideOnHost = false;
             cudaSetDevice(deviceId); CUERR;
@@ -234,9 +264,14 @@ namespace cudaprob3{
                             type,
                             d_cosine_list.get(), this->n_cosines,
                             d_energy_list.get(), this->n_energies,
-                            d_radii.get(), d_rhos.get(),
+                            d_radii.get(), d_rhos.get(), d_yps.get(),
                             d_maxlayers.get(),
-                            this->ProductionHeightinCentimeter, d_result_list.get());
+			    this->ProductionHeightinCentimeter,
+			    this->useProductionHeightAveraging,
+			    this->nProductionHeightBins,
+			    d_productionHeight_prob_list.get(),
+			    d_productionHeight_bins_list.get(),
+                            d_result_list.get());
 
             CUERR;
         }
@@ -260,10 +295,13 @@ namespace cudaprob3{
         unique_pinned_ptr<FLOAT_T> resultList;
 
         unique_dev_ptr<FLOAT_T> d_rhos;
+	unique_dev_ptr<FLOAT_T> d_yps;
         unique_dev_ptr<FLOAT_T> d_radii;
         unique_dev_ptr<int> d_maxlayers;
         unique_dev_ptr<FLOAT_T> d_energy_list;
         unique_dev_ptr<FLOAT_T> d_cosine_list;
+        unique_dev_ptr<FLOAT_T> d_productionHeight_prob_list;
+        unique_dev_ptr<FLOAT_T> d_productionHeight_bins_list;
         shared_dev_ptr<FLOAT_T> d_result_list;
 
         cudaStream_t stream;
@@ -375,11 +413,11 @@ namespace cudaprob3{
                 propagator->setDensityFromFile(filename);
         }
 
-        void setDensity(const std::vector<FLOAT_T>& radii, const std::vector<FLOAT_T>& rhos) override{
-            Propagator<FLOAT_T>::setDensity(radii, rhos);
+        void setDensity(const std::vector<FLOAT_T>& radii, const std::vector<FLOAT_T>& rhos, const std::vector<FLOAT_T>& yps) override{
+            Propagator<FLOAT_T>::setDensity(radii, rhos, yps);
 
             for(auto& propagator : propagatorVector)
-                propagator->setDensity(radii, rhos);
+                propagator->setDensity(radii, rhos, yps);
         }
 
         void setNeutrinoMasses(FLOAT_T dm12sq, FLOAT_T dm23sq) override{
