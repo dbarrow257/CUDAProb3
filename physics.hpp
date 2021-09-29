@@ -951,11 +951,11 @@ namespace cudaprob3{
 			}
 
 		      const int nMaxProductionHeightBins = Constants<FLOAT_T>::MaxProdHeightBins();
-		      FLOAT_T PathLengthShifts[nMaxProductionHeightBins];
+		      FLOAT_T PathLengthShifts[nMaxProductionHeightBins+1];
 
 		      UNROLLQUALIFIER
-			for (int iProductionHeight=0;iProductionHeight<nProductionHeightBins;iProductionHeight++) {
-			  FLOAT_T iVal_ProdHeightInCentimeter = Constants<FLOAT_T>::km2cm() * (productionHeight_binedges_list[iProductionHeight]+productionHeight_binedges_list[iProductionHeight+1])/2.0;
+			for (int iProductionHeight=0;iProductionHeight<(nProductionHeightBins+1);iProductionHeight++) {
+			  FLOAT_T iVal_ProdHeightInCentimeter = Constants<FLOAT_T>::km2cm() * productionHeight_binedges_list[iProductionHeight];
 			  FLOAT_T iVal_PathLength = (sqrt((Constants<FLOAT_T>::REarthcm() + iVal_ProdHeightInCentimeter )*(Constants<FLOAT_T>::REarthcm() + iVal_ProdHeightInCentimeter)
 							  - (Constants<FLOAT_T>::REarthcm()*Constants<FLOAT_T>::REarthcm())*( 1 - cosine_zenith*cosine_zenith)) - Constants<FLOAT_T>::REarthcm()*cosine_zenith);
 			  
@@ -963,7 +963,8 @@ namespace cudaprob3{
 			}
 		      
 		      UNROLLQUALIFIER
-			for (int iPathLength=0;iPathLength<(nProductionHeightBins-1);iPathLength++) {
+			for (int iPathLength=0;iPathLength<nProductionHeightBins;iPathLength++) {
+			  //PathLengthShifts is of size equal to the number of Production Height bin edges
 			  FLOAT_T h0 = PathLengthShifts[iPathLength];
 			  FLOAT_T h1 = PathLengthShifts[iPathLength+1];
 			  FLOAT_T hm = (h1+h0)/2.;
@@ -995,12 +996,14 @@ namespace cudaprob3{
 				      
 				      int ProbIndex = type*nNuFlav*n_energies*n_cosines*nProductionHeightBins + iNuFlav*n_energies*n_cosines*nProductionHeightBins
 					+ index_energy*n_cosines*nProductionHeightBins + index_cosine*nProductionHeightBins + iPathLength;
+				      //productionHeight_prob_list is of size equal to the number of production height bins * nNuTypes * nNuFlavouts * n_energies * n_cosines
+				      FLOAT_T ProdHeightProb = productionHeight_prob_list[ProbIndex];
 				      
-				      totalLenShiftFactor[iEig0][jEig0][iNuFlav].re += productionHeight_prob_list[ProbIndex] * sinc_exp_factor.re;
-				      totalLenShiftFactor[iEig0][jEig0][iNuFlav].im += productionHeight_prob_list[ProbIndex] * sinc_exp_factor.im;
+				      totalLenShiftFactor[iEig0][jEig0][iNuFlav].re += ProdHeightProb * sinc_exp_factor.re;
+				      totalLenShiftFactor[iEig0][jEig0][iNuFlav].im += ProdHeightProb * sinc_exp_factor.im;
 				      
-				      totalLenShiftFactor[jEig0][iEig0][iNuFlav].re += productionHeight_prob_list[ProbIndex] * sinc_exp_factor.re;
-				      totalLenShiftFactor[jEig0][iEig0][iNuFlav].im -= productionHeight_prob_list[ProbIndex] * sinc_exp_factor.im;
+				      totalLenShiftFactor[jEig0][iEig0][iNuFlav].re += ProdHeightProb * sinc_exp_factor.re;
+				      totalLenShiftFactor[jEig0][iEig0][iNuFlav].im -= ProdHeightProb * sinc_exp_factor.im;
 				    }
 				}
 			    }

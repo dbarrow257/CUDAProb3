@@ -356,7 +356,7 @@ namespace cudaprob3{
 	  productionHeightList_prob[i] = list_prob[i];
 	}
 
-	productionHeightList_bins = std::vector<FLOAT_T>(Constants<FLOAT_T>::MaxProdHeightBins());
+	productionHeightList_bins = std::vector<FLOAT_T>(Constants<FLOAT_T>::MaxProdHeightBins()+1);
 	for (unsigned int i=0;i<Constants<FLOAT_T>::MaxProdHeightBins();i++) {
 	  productionHeightList_bins[i] = 0.;
 	}
