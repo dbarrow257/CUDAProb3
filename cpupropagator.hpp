@@ -81,6 +81,7 @@ namespace cudaprob3{
     public:
 
         void calculateProbabilities(NeutrinoType type) override{
+
             if(!this->isInit)
                 throw std::runtime_error("CpuPropagator::calculateProbabilities. Object has been moved from.");
             if(!this->isSetProductionHeight)
@@ -92,9 +93,34 @@ namespace cudaprob3{
             physics::setMixMatrix_host(this->Mix_U.data());
             physics::setMassDifferences_host(this->dm.data());
 
-            physics::calculate(type, this->cosineList.data(), this->cosineList.size(),
-			       this->energyList.data(), this->energyList.size(), this->radii.data(), this->rhos.data(), this->yps.data(), this->maxlayers.data(), this->ProductionHeightinCentimeter, this->useProductionHeightAveraging, this->nProductionHeightBins,
-			       this->productionHeightList_prob.data(), this->productionHeightList_bins.data(), resultList.data());
+            /*
+            // Set the physicals
+            physics::calculate(type, 
+                this->cosineList.data(), this->cosineList.size(),
+                this->energyList.data(), this->energyList.size(), 
+                this->radii.data(), this->rhos.data(), this->yps.data(), 
+                this->maxlayers.data(), 
+                this->ProductionHeightinCentimeter, this->useProductionHeightAveraging, this->nProductionHeightBins,
+                this->productionHeightList_prob.data(), this->productionHeightList_bins.data(), resultList.data());
+            */
+            physics::calculate(type, 
+                this->cosineList.data(), 
+                this->cosineList.size(),
+                this->energyList.data(), 
+                this->energyList.size(), 
+                this->radii.data(), 
+                this->as.data(), 
+                this->bs.data(), 
+                this->cs.data(), 
+                this->rhos.data(), 
+                this->yps.data(), 
+                this->maxlayers.data(), 
+                this->ProductionHeightinCentimeter,
+                this->useProductionHeightAveraging,
+                this->nProductionHeightBins,
+                this->productionHeightList_prob.data(), 
+                this->productionHeightList_bins.data(), 
+                resultList.data());
         }
 
       void setChemicalComposition(const std::vector<FLOAT_T>& list) override{
