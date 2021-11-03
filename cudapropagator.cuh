@@ -115,6 +115,9 @@ namespace cudaprob3{
 
             resultList = std::move(other.resultList);
             d_rhos = std::move(other.d_rhos);
+            d_as = std::move(other.d_as);
+            d_bs = std::move(other.d_bs);
+            d_cs = std::move(other.d_cs);
 	    d_yps = std::move(other.d_yps);
             d_radii = std::move(other.d_radii);
             d_maxlayers = std::move(other.d_maxlayers);
@@ -151,6 +154,34 @@ namespace cudaprob3{
           d_radii = make_unique_dev<FLOAT_T>(deviceId, 2 * nDensityLayers + 1);
 
           cudaMemcpy(d_rhos.get(), this->rhos.data(), sizeof(FLOAT_T) * nDensityLayers, H2D); CUERR;
+          cudaMemcpy(d_yps.get(), this->yps.data(), sizeof(FLOAT_T) * nDensityLayers, H2D); CUERR;
+          cudaMemcpy(d_radii.get(), this->radii.data(), sizeof(FLOAT_T) * nDensityLayers, H2D); CUERR;
+        }
+
+        void setDensity(
+          const std::vector<FLOAT_T>& radii_, 
+          const std::vector<FLOAT_T>& as_,
+          const std::vector<FLOAT_T>& bs_,
+          const std::vector<FLOAT_T>& cs_,
+          const std::vector<FLOAT_T>& yps_) override{
+
+          // call parent function to set up host density data
+          Propagator<FLOAT_T>::setDensity(radii_, as_, bs_, cs_, yps_);
+
+          // allocate GPU arrays for density information and copy host density data to device density data
+          cudaSetDevice(deviceId); CUERR;
+
+          int nDensityLayers = this->radii.size();
+
+          d_as = make_unique_dev<FLOAT_T>(deviceId, 2 * nDensityLayers + 1);
+          d_bs = make_unique_dev<FLOAT_T>(deviceId, 2 * nDensityLayers + 1);
+          d_cs = make_unique_dev<FLOAT_T>(deviceId, 2 * nDensityLayers + 1);
+          d_yps = make_unique_dev<FLOAT_T>(deviceId, 2 * nDensityLayers + 1);
+          d_radii = make_unique_dev<FLOAT_T>(deviceId, 2 * nDensityLayers + 1);
+
+          cudaMemcpy(d_as.get(), this->as.data(), sizeof(FLOAT_T) * nDensityLayers, H2D); CUERR;
+          cudaMemcpy(d_bs.get(), this->bs.data(), sizeof(FLOAT_T) * nDensityLayers, H2D); CUERR;
+          cudaMemcpy(d_cs.get(), this->cs.data(), sizeof(FLOAT_T) * nDensityLayers, H2D); CUERR;
           cudaMemcpy(d_yps.get(), this->yps.data(), sizeof(FLOAT_T) * nDensityLayers, H2D); CUERR;
           cudaMemcpy(d_radii.get(), this->radii.data(), sizeof(FLOAT_T) * nDensityLayers, H2D); CUERR;
         }
@@ -263,11 +294,36 @@ namespace cudaprob3{
 
           dim3 grid(blocks, 1, 1);
 
+/*
           physics::callCalculateKernelAsync(grid, block, stream,
               type,
-              d_cosine_list.get(), this->n_cosines,
-              d_energy_list.get(), this->n_energies,
-              d_radii.get(), d_rhos.get(), d_yps.get(),
+              d_cosine_list.get(), 
+              this->n_cosines,
+              d_energy_list.get(), 
+              this->n_energies,
+              d_radii.get(), 
+              d_rhos.get(), 
+              d_yps.get(),
+              d_maxlayers.get(),
+              this->ProductionHeightinCentimeter,
+              this->useProductionHeightAveraging,
+              this->nProductionHeightBins,
+              d_productionHeight_prob_list.get(),
+              d_productionHeight_bins_list.get(),
+              d_result_list.get());
+              */
+          physics::callCalculateKernelAsync(grid, block, stream,
+              type,
+              d_cosine_list.get(), 
+              this->n_cosines,
+              d_energy_list.get(), 
+              this->n_energies,
+              d_radii.get(), 
+              d_as.get(), 
+              d_bs.get(), 
+              d_cs.get(), 
+              d_rhos.get(), 
+              d_yps.get(),
               d_maxlayers.get(),
               this->ProductionHeightinCentimeter,
               this->useProductionHeightAveraging,
@@ -298,6 +354,10 @@ namespace cudaprob3{
         unique_pinned_ptr<FLOAT_T> resultList;
 
         unique_dev_ptr<FLOAT_T> d_rhos;
+        // Polynomial coefficients
+        unique_dev_ptr<FLOAT_T> d_as;
+        unique_dev_ptr<FLOAT_T> d_bs;
+        unique_dev_ptr<FLOAT_T> d_cs;
         unique_dev_ptr<FLOAT_T> d_yps;
         unique_dev_ptr<FLOAT_T> d_radii;
         unique_dev_ptr<int> d_maxlayers;
