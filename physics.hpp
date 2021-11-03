@@ -1152,6 +1152,9 @@ namespace cudaprob3{
                 const FLOAT_T* const energylist,
                 int n_energies,
                 const FLOAT_T* const radii,
+                const FLOAT_T* const as,
+                const FLOAT_T* const bs,
+                const FLOAT_T* const cs,
                 const FLOAT_T* const rhos,
                 const FLOAT_T* const yps,
                 const int* const maxlayers,
@@ -1162,12 +1165,32 @@ namespace cudaprob3{
                 const FLOAT_T* const productionHeight_binedges_list,
                 FLOAT_T* const result){
 
+              /*
               calculate(type, 
                   cosinelist, 
                   n_cosines, 
                   energylist, 
                   n_energies, 
                   radii, 
+                  rhos, 
+                  yps, 
+                  maxlayers, 
+                  ProductionHeightinCentimeter, 
+                  useProductionHeightAveraging, 
+                  nProductionHeightBins, 
+                  productionHeight_prob_list, 
+                  productionHeight_binedges_list, 
+                  result);
+                  */
+              calculate(type, 
+                  cosinelist, 
+                  n_cosines, 
+                  energylist, 
+                  n_energies, 
+                  radii, 
+                  as,
+                  bs,
+                  cs,
                   rhos, 
                   yps, 
                   maxlayers, 
@@ -1189,6 +1212,9 @@ namespace cudaprob3{
                 const FLOAT_T* const energylist,
                 int n_energies,
                 const FLOAT_T* const radii,
+                const FLOAT_T* const as,
+                const FLOAT_T* const bs,
+                const FLOAT_T* const cs,
                 const FLOAT_T* const rhos,
                 const FLOAT_T* const yps,
                 const int* const maxlayers,
@@ -1201,7 +1227,42 @@ namespace cudaprob3{
 
               prepare_getMfast<FLOAT_T>(type);
 
-              calculateKernel<FLOAT_T><<<grid, block, 0, stream>>>(type, cosinelist, n_cosines, energylist, n_energies, radii, rhos, yps, maxlayers, ProductionHeightinCentimeter, useProductionHeightAveraging, nProductionHeightBins, productionHeight_prob_list, productionHeight_binedges_list,  result);
+              /*
+              calculateKernel<FLOAT_T><<<grid, block, 0, stream>>>(
+                  type, 
+                  cosinelist, 
+                  n_cosines, 
+                  energylist, 
+                  n_energies, 
+                  radii, 
+                  rhos, 
+                  yps, 
+                  maxlayers, 
+                  ProductionHeightinCentimeter, 
+                  useProductionHeightAveraging, 
+                  nProductionHeightBins, 
+                  productionHeight_prob_list, 
+                  productionHeight_binedges_list,  
+                  result);
+              CUERR;
+              */
+              calculateKernel<FLOAT_T><<<grid, block, 0, stream>>>(
+                  type, 
+                  cosinelist, 
+                  n_cosines, 
+                  energylist, 
+                  n_energies, 
+                  radii, 
+                  as, bs, cs,
+                  rhos, 
+                  yps, 
+                  maxlayers, 
+                  ProductionHeightinCentimeter, 
+                  useProductionHeightAveraging, 
+                  nProductionHeightBins, 
+                  productionHeight_prob_list, 
+                  productionHeight_binedges_list,  
+                  result);
               CUERR;
             }
 #endif
