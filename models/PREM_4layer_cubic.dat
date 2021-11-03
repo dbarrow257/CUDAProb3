@@ -4,9 +4,9 @@
 # Idea by Lukas Berns, and http://www.typnet.net/Essays/EarthGravGraphics/EarthGrav.pdf
 # Could also implemened the more detailed polynomials from table 1 of PREM paper (https://doi.org/10.1016/0031-9201(81)90046-7)
 
-#radius  a           b           c        Yp
-0.      -2.1773e-10  1.9110e-8   1.3088e4 0.468
-1220.0  -2.1773e-10  1.9110e-8   1.3088e4 0.468
-3480.0  -2.4123e-10  1.3976e-4   1.2346e4 0.468
-5701.0  -3.0922e-11  -2.4441e-4  6.7823e3 0.497
-6371.0  0            -1.2603e-3  1.1249e4 0.497
+#radius  a          b           c         Yp
+0.      -2.1773e-7  1.9110e-8   1.3088e1  0.468
+1220.0  -2.1773e-7  1.9110e-8   1.3088e1  0.468
+3480.0  -2.4123e-7  1.3976e-4   1.2346e1  0.468
+5701.0  -3.0922e-8  -2.4441e-4  6.7823e0  0.497
+6371.0  0           -1.2603e-3  1.1249e1  0.497
