@@ -76,6 +76,9 @@ namespace cudaprob3{
             maxlayers = other.maxlayers;
             radii = other.radii;
             rhos = other.rhos;
+            as = other.as;
+            bs = other.bs;
+            cs = other.cs;
 	    yps = other.yps;
             coslimit = other.coslimit;
             Mix_U = other.Mix_U;
@@ -104,6 +107,9 @@ namespace cudaprob3{
             maxlayers = std::move(other.maxlayers);
             radii = std::move(other.radii);
             rhos = std::move(other.rhos);
+            as = std::move(other.as);
+            bs = std::move(other.bs);
+            cs = std::move(other.cs);
 	    yps = std::move(other.yps);
             coslimit = std::move(other.coslimit);
             Mix_U = std::move(other.Mix_U);
@@ -158,6 +164,8 @@ namespace cudaprob3{
           const std::vector<FLOAT_T>& radii_, 
           const std::vector<FLOAT_T>& rhos_, 
           const std::vector<FLOAT_T>& yps_){
+
+          UsePolyDensity = false;
 
             if(rhos_.size() != radii_.size()){
                 throw std::runtime_error("setDensity : rhos.size() != radii.size()");
@@ -223,6 +231,8 @@ namespace cudaprob3{
           const std::vector<FLOAT_T>& b_, 
           const std::vector<FLOAT_T>& c_, 
           const std::vector<FLOAT_T>& yps_) {
+
+        UsePolyDensity = true;
 
         if(a_.size() != radii_.size()){
           throw std::runtime_error("setDensity : a.size() != radii.size()");
@@ -592,6 +602,9 @@ namespace cudaprob3{
 
       int n_cosines;
       int n_energies;
+
+      // Use polynomial density for density averaging each track?
+      bool UsePolyDensity;
     };
 
 

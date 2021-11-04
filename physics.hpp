@@ -805,6 +805,7 @@ namespace cudaprob3{
           int nProductionHeightBins,
           const FLOAT_T* const productionHeight_prob_list, // 20 (nBins) * 2 (nu,nubar) * 3 (e,mu,tau) * n_energies * n_cosines
           const FLOAT_T* const productionHeight_binedges_list, // 21 (BinEdges) in cm
+          bool UsePolyDensity, // Use polynomial density?
           FLOAT_T* const result){
 
         //prepare more constant data. For the kernel, this is done by the wrapper function callCalculateKernelAsync
@@ -900,17 +901,22 @@ namespace cudaprob3{
 
                 // loop from vacuum layer to innermost crossed layer
                 for (int iLayer=0;iLayer<=MaxLayer;iLayer++){
-                  // Distance travelled for this cos zenith
-                  // in cm
+                  // Distance travelled for this cos zenith in cm
+                  // Probably also doesn't need recalculating (could be stored for each cos theta)
                   const FLOAT_T dist = getTraversedDistanceOfLayer(radii, iLayer, MaxLayer, PathLength, TotalEarthLength, cosine_zenith);
 
-                  // Get the density for this path in this layer
-                  //const FLOAT_T density = getDensityOfLayer(rhos, yps, iLayer, MaxLayer);
+                  // We could probably pre-calculate these and keep in GPU memory
+                  // It's not a very long calculation, but really doesn't require updating once we have fixed our cos theta
 
-                  // There's now a density for every single cos theta
-                  const FLOAT_T density = getDensityOfLayerPoly(as, bs, cs, cosine_zenith, radii, yps, iLayer, MaxLayer, dist);
-                  //std::cout << "cos zenith: " << cosine_zenith << " layer: " << iLayer << " / " << MaxLayer << " distance: " << dist << " density: " << density << std::endl;
-                  //std::cout << "  " << altdensity << std::endl;
+                  // Get the density for this path in this layer
+                  FLOAT_T density;
+                  // If we use constant density
+                  if (!UsePolyDensity) { 
+                    density = getDensityOfLayer(rhos, yps, iLayer, MaxLayer);
+                  // If we use polynomial average density per trjectory
+                  } else {
+                    density = getDensityOfLayerPoly(as, bs, cs, cosine_zenith, radii, yps, iLayer, MaxLayer, dist);
+                  }
 
                   /*
                   //DB Uncomment for debugging get_transition_matrix against get_transition_matrix_expansion
@@ -931,7 +937,7 @@ namespace cudaprob3{
 
                   get_transition_matrix_expansion(type,
                       energy,
-                      density /** Constants<FLOAT_T>::density_convert()*/,
+                      density, // This is now the actual electron density
                       dist / Constants<FLOAT_T>::km2cm(), // Convert back to km
                       ExpansionMatrix[iLayer],
                       arg[iLayer],
@@ -1163,25 +1169,9 @@ namespace cudaprob3{
                 int nProductionHeightBins,
                 const FLOAT_T* const productionHeight_prob_list,
                 const FLOAT_T* const productionHeight_binedges_list,
+                bool UsePolyDensity,
                 FLOAT_T* const result){
 
-              /*
-              calculate(type, 
-                  cosinelist, 
-                  n_cosines, 
-                  energylist, 
-                  n_energies, 
-                  radii, 
-                  rhos, 
-                  yps, 
-                  maxlayers, 
-                  ProductionHeightinCentimeter, 
-                  useProductionHeightAveraging, 
-                  nProductionHeightBins, 
-                  productionHeight_prob_list, 
-                  productionHeight_binedges_list, 
-                  result);
-                  */
               calculate(type, 
                   cosinelist, 
                   n_cosines, 
@@ -1199,6 +1189,7 @@ namespace cudaprob3{
                   nProductionHeightBins, 
                   productionHeight_prob_list, 
                   productionHeight_binedges_list, 
+                  UsePolyDensity,
                   result);
             }
 
@@ -1223,29 +1214,11 @@ namespace cudaprob3{
                 int nProductionHeightBins,
                 const FLOAT_T* const productionHeight_prob_list,
                 const FLOAT_T* const productionHeight_binedges_list,
+                bool UsePolyDensity,
                 FLOAT_T* const result){
 
               prepare_getMfast<FLOAT_T>(type);
 
-              /*
-              calculateKernel<FLOAT_T><<<grid, block, 0, stream>>>(
-                  type, 
-                  cosinelist, 
-                  n_cosines, 
-                  energylist, 
-                  n_energies, 
-                  radii, 
-                  rhos, 
-                  yps, 
-                  maxlayers, 
-                  ProductionHeightinCentimeter, 
-                  useProductionHeightAveraging, 
-                  nProductionHeightBins, 
-                  productionHeight_prob_list, 
-                  productionHeight_binedges_list,  
-                  result);
-              CUERR;
-              */
               calculateKernel<FLOAT_T><<<grid, block, 0, stream>>>(
                   type, 
                   cosinelist, 
@@ -1262,6 +1235,7 @@ namespace cudaprob3{
                   nProductionHeightBins, 
                   productionHeight_prob_list, 
                   productionHeight_binedges_list,  
+                  UsePolyDensity,
                   result);
               CUERR;
             }

@@ -294,24 +294,6 @@ namespace cudaprob3{
 
           dim3 grid(blocks, 1, 1);
 
-/*
-          physics::callCalculateKernelAsync(grid, block, stream,
-              type,
-              d_cosine_list.get(), 
-              this->n_cosines,
-              d_energy_list.get(), 
-              this->n_energies,
-              d_radii.get(), 
-              d_rhos.get(), 
-              d_yps.get(),
-              d_maxlayers.get(),
-              this->ProductionHeightinCentimeter,
-              this->useProductionHeightAveraging,
-              this->nProductionHeightBins,
-              d_productionHeight_prob_list.get(),
-              d_productionHeight_bins_list.get(),
-              d_result_list.get());
-              */
           physics::callCalculateKernelAsync(grid, block, stream,
               type,
               d_cosine_list.get(), 
@@ -330,6 +312,7 @@ namespace cudaprob3{
               this->nProductionHeightBins,
               d_productionHeight_prob_list.get(),
               d_productionHeight_bins_list.get(),
+              this->UsePolyDensity,
               d_result_list.get());
 
           CUERR;
@@ -353,7 +336,9 @@ namespace cudaprob3{
     private:
         unique_pinned_ptr<FLOAT_T> resultList;
 
+        // density
         unique_dev_ptr<FLOAT_T> d_rhos;
+
         // Polynomial coefficients
         unique_dev_ptr<FLOAT_T> d_as;
         unique_dev_ptr<FLOAT_T> d_bs;
