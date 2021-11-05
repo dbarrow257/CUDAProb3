@@ -81,6 +81,7 @@ namespace cudaprob3{
     public:
 
         void calculateProbabilities(NeutrinoType type) override{
+
             if(!this->isInit)
                 throw std::runtime_error("CpuPropagator::calculateProbabilities. Object has been moved from.");
             if(!this->isSetProductionHeight)
@@ -92,44 +93,60 @@ namespace cudaprob3{
             physics::setMixMatrix_host(this->Mix_U.data());
             physics::setMassDifferences_host(this->dm.data());
 
-            physics::calculate(type, this->cosineList.data(), this->cosineList.size(),
-			       this->energyList.data(), this->energyList.size(), this->radii.data(), this->rhos.data(), this->yps.data(), this->maxlayers.data(), this->ProductionHeightinCentimeter, this->useProductionHeightAveraging, this->nProductionHeightBins,
-			       this->productionHeightList_prob.data(), this->productionHeightList_bins.data(), resultList.data());
+            physics::calculate(type, 
+                this->cosineList.data(), 
+                this->cosineList.size(),
+                this->energyList.data(), 
+                this->energyList.size(), 
+                this->radii.data(), 
+                this->as.data(), 
+                this->bs.data(), 
+                this->cs.data(), 
+                this->rhos.data(), 
+                this->yps.data(), 
+                this->maxlayers.data(), 
+                this->ProductionHeightinCentimeter,
+                this->useProductionHeightAveraging,
+                this->nProductionHeightBins,
+                this->productionHeightList_prob.data(), 
+                this->productionHeightList_bins.data(), 
+                this->UsePolyDensity, // Are we using constant density or polynomial?
+                resultList.data());
         }
 
-      void setChemicalComposition(const std::vector<FLOAT_T>& list) override{
-        if (list.size() != this->yps.size()) {
-          throw std::runtime_error("CpuPropagator::setChemicalComposition. Size of input list not equal to expectation.");
+        void setChemicalComposition(const std::vector<FLOAT_T>& list) override{
+          if (list.size() != this->yps.size()) {
+            throw std::runtime_error("CpuPropagator::setChemicalComposition. Size of input list not equal to expectation.");
+          }
+
+          for (int iyp=0;iyp<list.size();iyp++) {
+            this->yps[iyp] = list[iyp];
+          }
+
         }
-	
-        for (int iyp=0;iyp<list.size();iyp++) {
-          this->yps[iyp] = list[iyp];
-        }
-	
-      }
 
         FLOAT_T getProbability(int index_cosine, int index_energy, ProbType t) override{
-	  if(index_cosine >= this->n_cosines || index_energy >= this->n_energies) {
-	    throw std::runtime_error("CpuPropagator::getProbability. Invalid indices");
-	  }
+          if(index_cosine >= this->n_cosines || index_energy >= this->n_energies) {
+            throw std::runtime_error("CpuPropagator::getProbability. Invalid indices");
+          }
 
-            std::uint64_t index = std::uint64_t(index_cosine) * std::uint64_t(this->n_energies) * std::uint64_t(9)
-                    + std::uint64_t(index_energy) * std::uint64_t(9);
-            return resultList[index + int(t)];
+          std::uint64_t index = std::uint64_t(index_cosine) * std::uint64_t(this->n_energies) * std::uint64_t(9)
+            + std::uint64_t(index_energy) * std::uint64_t(9);
+          return resultList[index + int(t)];
         }
 
-      void getProbabilityArr(FLOAT_T* probArr, ProbType t) override{
+        void getProbabilityArr(FLOAT_T* probArr, ProbType t) override{
 
-	std::uint64_t iter = 0;
-	for (std::uint64_t index_energy=0;index_energy<this->n_energies;index_energy++) {
-	  for (std::uint64_t index_cosine=0;index_cosine<this->n_cosines;index_cosine++) {
-	    std::uint64_t index = std::uint64_t(index_cosine) * std::uint64_t(this->n_energies) * std::uint64_t(9) + std::uint64_t(index_energy) * std::uint64_t(9);
-	    probArr[iter] = resultList[index + int(t)];
-	    iter += 1;
-	  }
-	}
+          std::uint64_t iter = 0;
+          for (std::uint64_t index_energy=0;index_energy<this->n_energies;index_energy++) {
+            for (std::uint64_t index_cosine=0;index_cosine<this->n_cosines;index_cosine++) {
+              std::uint64_t index = std::uint64_t(index_cosine) * std::uint64_t(this->n_energies) * std::uint64_t(9) + std::uint64_t(index_energy) * std::uint64_t(9);
+              probArr[iter] = resultList[index + int(t)];
+              iter += 1;
+            }
+          }
 
-      }
+        }
 
     private:
         std::vector<FLOAT_T> resultList;

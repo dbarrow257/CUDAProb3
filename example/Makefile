@@ -26,10 +26,10 @@ endif
 
 # Had to modify ptx assembler option
 all:
-	nvcc -g -O2 -x cu $(ARCH) -lineinfo -std=c++11 -Xcompiler="-fopenmp -Wall" -I.. main.cpp -o maingpu
+	nvcc -g -O0 -x cu $(ARCH) -lineinfo -std=c++11 -Xcompiler="-fopenmp -Wall" -I.. main.cpp -o maingpu
 
 cpu:
-	g++ -g -O2 -std=c++11 -fopenmp -Wall -I.. main.cpp -o maincpu
+	g++ -g -O0 -std=c++11 -fopenmp -Wall -I.. main.cpp -o maincpu
 
 clean:
 	rm -f maingpu maincpu
