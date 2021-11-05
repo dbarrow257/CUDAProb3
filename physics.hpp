@@ -298,7 +298,7 @@ namespace cudaprob3{
         /* Equation (21) */
         const FLOAT_T argtmp = (2.0*alpha*alpha*alpha-9.0*alpha*beta+27.0*gamma)/
           (2.0*sqrt(tmp*tmp*tmp));
-        const FLOAT_T arg = [&](){
+        const FLOAT_T arg = [&]() -> FLOAT_T {
           if (fabs(argtmp)>1.0)
             return argtmp/fabs(argtmp);
           else
