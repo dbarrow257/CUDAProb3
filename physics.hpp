@@ -704,14 +704,13 @@ namespace cudaprob3{
         const FLOAT_T c = Rmax2;
 
         // in cm, convert to km
-        //FLOAT_T t2 = distance/Constants<FLOAT_T>::km2cm();
-        FLOAT_T t2 = distance*1.e-5;
+        FLOAT_T t2 = distance/Constants<FLOAT_T>::km2cm();
         // Really only keeping this here so it's easier to follow derivation
         const FLOAT_T t1 = 0.;
 
         // Now write the solutions for the integrals of density over the path
         // Parameterise density as density = a*r^2 + b*r + c
-        //
+
         // Start with the r^2 term:
         FLOAT_T square_term_p = a*pow(t2,3)/3. + b*pow(t2,2)/2. + c*t2;
         FLOAT_T square_term_m = a*pow(t1,3)/3. + b*pow(t1,2)/2. + c*t1;
@@ -900,7 +899,7 @@ namespace cudaprob3{
                 //DB Loop over layers		    
 
                 // loop from vacuum layer to innermost crossed layer
-                for (int iLayer=0;iLayer<=MaxLayer;iLayer++){
+                for (int iLayer=0;iLayer<=MaxLayer;iLayer++) {
                   // Distance travelled for this cos zenith in cm
                   // Probably also doesn't need recalculating (could be stored for each cos theta)
                   const FLOAT_T dist = getTraversedDistanceOfLayer(radii, iLayer, MaxLayer, PathLength, TotalEarthLength, cosine_zenith);
