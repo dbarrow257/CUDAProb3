@@ -25,8 +25,9 @@ endif
 endif
 
 # Had to modify ptx assembler option
-all:
-	nvcc -g -O0 -x cu $(ARCH) -lineinfo -std=c++11 -Xcompiler="-fopenmp -Wall" -I.. main.cpp -o maingpu
+all: gpu cpu
+gpu:
+	nvcc -g -O0 -x cu $(ARCH) -lineinfo -std=c++11 -Xcompiler="-fopenmp -O0 -Wall" -I.. main.cpp -o maingpu
 
 cpu:
 	g++ -g -O0 -std=c++11 -fopenmp -Wall -I.. main.cpp -o maincpu
