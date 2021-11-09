@@ -79,7 +79,6 @@ int main(int argc, char** argv){
   //// Binning
   int n_cosines = 200;
   int n_energies = 200;
-  int n_threads = 1;
 
   if(argc > 1)
     n_cosines = std::atoi(argv[1]);
@@ -100,6 +99,7 @@ int main(int argc, char** argv){
   const FLOAT_T dm12sq = 7.9e-5;
   const FLOAT_T dm23sq = 2.5e-3;
 
+  //int n_threads = 1;
   //std::unique_ptr<Propagator<FLOAT_T>> propagator( new CpuPropagator<FLOAT_T>(n_cosines, n_energies, n_threads)); // cpu propagator with 4 threads
 
   // these 3 are only available if compiled with nvcc.
