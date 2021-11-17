@@ -133,6 +133,9 @@ namespace cudaprob3{
         }
 
     public:
+
+      int getNlayers() { return radii.size(); }
+
       void SetNumberOfProductionHeightBinsForAveraging(int nProductionHeightBins_) {
 	if (nProductionHeightBins_ > Constants<FLOAT_T>::MaxProdHeightBins()) {
 	  std::cerr << "Invalid number of production height averages:" << nProductionHeightBins_ << std::endl;
