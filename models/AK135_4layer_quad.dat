@@ -6,9 +6,9 @@
 # Updated from v1 by accounting for minimising residuals, giving more SK-like density in outer layer
 # See T2K TN 425 (Oscillation probability calculation for the T2K+SK atmospheric joint fit)
 
-#radius  a (g/cm5)  b (g/cm4)   c (gm/cm3)  Yp
-0.      -2.6238e-7  5.96453e-5  13.00       0.468
-1221.5  -2.6238e-7  5.96453e-5  13.00       0.468
-3480.0  -2.6854e-7  2.93518e-4  12.14       0.468
-5701.0  -5.0259e-8  -7.2202e-5  6.40        0.497
-6371.0  -1.3265e-6  0.0143667   -34.75      0.497
+#radius  a (g/cm5)   b (g/cm4)   c (gm/cm3)  Yp
+0.      -2.62382e-7  5.96453e-5  13.00       0.468
+1221.5  -2.62382e-7  5.96453e-5  13.00       0.468
+3480.0  -2.68541e-7  2.93518e-4  12.14       0.468
+5701.0  -5.02591e-8  -7.22022e-5 6.40        0.497
+6371.0  -1.32645e-6  0.0143667   -34.75      0.497
