@@ -214,7 +214,7 @@ namespace cudaprob3{
 
         void setChemicalComposition(const std::vector<FLOAT_T>& list) override{
           if (list.size() != this->yps.size()) {
-            throw std::runtime_error("CpuPropagator::setChemicalComposition. Size of input list not equal to expectation.");
+            throw std::runtime_error("cudapropagator::setChemicalComposition. Size of input list not equal to expectation.");
           }
 
           for (int iyp=0;iyp<list.size();iyp++) {
