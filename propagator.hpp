@@ -134,7 +134,9 @@ namespace cudaprob3{
 
     public:
 
-      int getNlayers() { return radii.size(); }
+      // Returns the number of LAYER BOUNDARIES
+      // i.e. number of layers is this number *MINUS ONE*
+      int getNlayerBoundaries() { return n_layers; };
 
       void SetNumberOfProductionHeightBinsForAveraging(int nProductionHeightBins_) {
 	if (nProductionHeightBins_ > Constants<FLOAT_T>::MaxProdHeightBins()) {
@@ -390,6 +392,7 @@ namespace cudaprob3{
           std::cout << "  Number of entries per line: " << nentries_old << std::endl;
           throw;
         }
+        n_layers = radii.size();
       }
 
       /// \brief Set mixing angles and cp phase in radians
@@ -605,6 +608,7 @@ namespace cudaprob3{
 
       int n_cosines;
       int n_energies;
+      int n_layers;
 
       // Use polynomial density for density averaging each track?
       bool UsePolyDensity;
