@@ -704,7 +704,7 @@ namespace cudaprob3{
         const FLOAT_T c = Rmax2;
 
         // in cm, convert to km
-        FLOAT_T t2 = distance/Constants<FLOAT_T>::km2cm();
+        const FLOAT_T t2 = distance/Constants<FLOAT_T>::km2cm();
         // Really only keeping this here so it's easier to follow derivation
         const FLOAT_T t1 = 0.;
 
