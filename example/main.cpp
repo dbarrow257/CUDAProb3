@@ -87,7 +87,7 @@ int main(int argc, char** argv){
   //if(argc > 3)
   //	n_threads = std::atoi(argv[3]);
 
-  std::vector<FLOAT_T> cosineList = linspace((FLOAT_T)-1.0, (FLOAT_T)0.0, n_cosines);
+  std::vector<FLOAT_T> cosineList = linspace((FLOAT_T)-0.995, (FLOAT_T)0.0, n_cosines);
   std::vector<FLOAT_T> energyList = logspace((FLOAT_T)1.e0, (FLOAT_T)1.e2, n_energies);
 
   // Prob3++ probRoot.cc parameters in radians
@@ -126,20 +126,22 @@ int main(int argc, char** argv){
 
   // set density model
   //propagator->setDensityFromFile("models/PREM_12layer.dat");
-  propagator->setDensityFromFile("../models/PREM_4layer_cubic.dat");
+  //propagator->setDensityFromFile("../models/PREM_4layer_quad_v2.dat");
+  propagator->setDensityFromFile("../models/PREM_5layer_quad.dat");
+  //propagator->setDensityFromFile("../models/AK135_5layer_quad.dat");
   //propagator->setDensityFromFile("../models/PREM_4layer.dat");
 
   // set neutrino production height in kilometers above earth
   propagator->setProductionHeight(22.0);
-  propagator->SetNumberOfProductionHeightBinsForAveraging(1);
-  std::vector<FLOAT_T> prob;
-  std::vector<FLOAT_T> height;
-  for (int i = 0; i < 1*2*3*n_cosines*n_energies; ++i) {
-    prob.push_back(1.0);
-  }
-  height.push_back(22.0);
-  height.push_back(22.5);
-  propagator->setProductionHeightList(prob, height);
+  //propagator->SetNumberOfProductionHeightBinsForAveraging(1);
+  //std::vector<FLOAT_T> prob;
+  //std::vector<FLOAT_T> height;
+  //for (int i = 0; i < 1*2*3*n_cosines*n_energies; ++i) {
+    //prob.push_back(1.0);
+  //}
+  //height.push_back(22.0);
+  //height.push_back(22.5);
+  //propagator->setProductionHeightList(prob, height);
 
   TIMERSTARTCPU(calc_and_transfer);
   TIMERSTARTCPU(calculation);
