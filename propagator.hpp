@@ -408,27 +408,26 @@ namespace cudaprob3{
           throw;
         }
 
-        // debug
+        //debug
         // std::cout<<"List of radii before:"<<std::endl;
-        // for(int i=0;i<nBoundaries;i++){
+        // for(int i=0;i<radii.size();i++){
         //   std::cout<<radii[i]<<std::endl;
         // }
 
         for(int i=0;i<nBoundaries;i++){
           radii[i] = list_radii[nBoundaries-i-1];
-          //std::cout<<"radii["<<i<<"] = list_radii["<<nBoundaries-i-1<<"]"<<std::endl;
         }
 
         // debug
         // std::cout<<"List of radii after:"<<std::endl;
-        // for(int i=0;i<nBoundaries;i++){
+        // for(int i=0;i<radii.size();i++){
         //   std::cout<<radii[i]<<std::endl;
         // }
 
         // debug
-        // std::cout<<"List of as before:"<<std::endl;
+        // std::cout<<"List of cs before:"<<std::endl;
         // for(int i=0;i<nWeights+1;i++){
-        //   std::cout<<as[i]<<std::endl;
+        //   std::cout<<cs[i]<<std::endl;
         // }
         
         for(int i=0;i<nWeights;i++){
@@ -442,11 +441,12 @@ namespace cudaprob3{
         cs[nWeights]*= list_weights[0];
         //std::cout<<"coeffs["<<nWeights<<"] = list_weights[0]"<<std::endl;
         // debug
-        // std::cout<<"List of as after:"<<std::endl;
+        // std::cout<<"List of cs after:"<<std::endl;
         // for(int i=0;i<nWeights+1;i++){
-        //   std::cout<<as[i]<<std::endl;
+        //   std::cout<<cs[i]<<std::endl;
         // }
 
+        setDensity(radii, as, bs, cs, yps);
       }
 
       virtual void ModifyEarthModel(std::vector<FLOAT_T> list_radii, std::vector<FLOAT_T> list_weights){
@@ -492,6 +492,7 @@ namespace cudaprob3{
         //   std::cout<<rhos[i]<<std::endl;
         // }
 
+        setDensity(radii, rhos, yps);
       }
 
       virtual bool PolynomialDensity(){
