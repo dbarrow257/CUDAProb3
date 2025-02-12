@@ -400,6 +400,7 @@ namespace cudaprob3{
         int nBoundaries(list_radii.size());
         int nWeights(list_weights.size());
 
+
         if(nBoundaries!=radii.size()-1 || nWeights!=radii.size()-1){
           std::cout<<"Error in ModifyEarthModel(list_radii, list_weights)"<<std::endl;
           std::cout<<"Expected "<<radii.size()-1<<" radii, got "<< nBoundaries <<std::endl;
@@ -407,12 +408,28 @@ namespace cudaprob3{
           throw;
         }
 
+        // debug
+        // std::cout<<"List of radii before:"<<std::endl;
+        // for(int i=0;i<nBoundaries;i++){
+        //   std::cout<<radii[i]<<std::endl;
+        // }
+
         for(int i=0;i<nBoundaries;i++){
-          //std::cout<<radii[i]<<std::endl;
           radii[i] = list_radii[nBoundaries-i-1];
           //std::cout<<"radii["<<i<<"] = list_radii["<<nBoundaries-i-1<<"]"<<std::endl;
-          //std::cout<<radii[i]<<std::endl;
         }
+
+        // debug
+        // std::cout<<"List of radii after:"<<std::endl;
+        // for(int i=0;i<nBoundaries;i++){
+        //   std::cout<<radii[i]<<std::endl;
+        // }
+
+        // debug
+        // std::cout<<"List of as before:"<<std::endl;
+        // for(int i=0;i<nWeights+1;i++){
+        //   std::cout<<as[i]<<std::endl;
+        // }
         
         for(int i=0;i<nWeights;i++){
           as[i]*= list_weights[nWeights-i-1];
@@ -423,7 +440,12 @@ namespace cudaprob3{
         as[nWeights]*= list_weights[0];
         bs[nWeights]*= list_weights[0];
         cs[nWeights]*= list_weights[0];
-        std::cout<<"coeffs["<<nWeights<<"] = list_weights[0]"<<std::endl;
+        //std::cout<<"coeffs["<<nWeights<<"] = list_weights[0]"<<std::endl;
+        // debug
+        // std::cout<<"List of as after:"<<std::endl;
+        // for(int i=0;i<nWeights+1;i++){
+        //   std::cout<<as[i]<<std::endl;
+        // }
 
       }
 
@@ -432,21 +454,44 @@ namespace cudaprob3{
         int nBoundaries(list_radii.size());
         int nWeights(list_weights.size());
 
-        if(nBoundaries!=radii.size()-1 || nWeights!=radii.size()){
+        if(nBoundaries!=radii.size()-1 || nWeights!=radii.size()-1){
           std::cout<<"Error in ModifyEarthModel(list_radii, list_weights)"<<std::endl;
           std::cout<<"Expected "<<radii.size()-1<<" radii, got "<< nBoundaries <<std::endl;
-          std::cout<<"Expected "<<radii.size()<<" weights, got "<< nBoundaries <<std::endl;
+          std::cout<<"Expected "<<radii.size()-1<<" weights, got "<< nWeights <<std::endl;
           throw;
         }
 
-        for(int i=1;i<nBoundaries+1;i++){
-          radii[i] = list_radii[nBoundaries-i];
+        // debug
+        // std::cout<<"List of radii before:"<<std::endl;
+        // for(int i=0;i<radii.size();i++){
+        //   std::cout<<radii[i]<<std::endl;
+        // }
+
+        for(int i=0;i<nBoundaries;i++){
+          radii[i] = list_radii[nBoundaries-i-1];
         }
         
+        // debug
+        // std::cout<<"List of radii after:"<<std::endl;
+        // for(int i=0;i<radii.size();i++){
+        //   std::cout<<radii[i]<<std::endl;
+        // }
+
+        // std::cout<<"List of rhos before:"<<std::endl;
+        // for(int i=0;i<nWeights+1;i++){
+        //   std::cout<<rhos[i]<<std::endl;
+        // }
+
         for(int i=0;i<nWeights;i++){
           rhos[i]*= list_weights[nWeights-i-1];
         }
         rhos[nWeights]*= list_weights[0];
+
+        // std::cout<<"List of rhos after:"<<std::endl;
+        // for(int i=0;i<nWeights+1;i++){
+        //   std::cout<<rhos[i]<<std::endl;
+        // }
+
       }
 
       virtual bool PolynomialDensity(){
