@@ -400,7 +400,6 @@ namespace cudaprob3{
         int nBoundaries(list_radii.size());
         int nWeights(list_weights.size());
 
-
         if(nBoundaries!=radii.size()-1 || nWeights!=radii.size()-1){
           std::cout<<"Error in ModifyEarthModel(list_radii, list_weights)"<<std::endl;
           std::cout<<"Expected "<<radii.size()-1<<" radii, got "<< nBoundaries <<std::endl;
@@ -408,43 +407,18 @@ namespace cudaprob3{
           throw;
         }
 
-        //debug
-        // std::cout<<"List of radii before:"<<std::endl;
-        // for(int i=0;i<radii.size();i++){
-        //   std::cout<<radii[i]<<std::endl;
-        // }
-
         for(int i=0;i<nBoundaries;i++){
           radii[i] = list_radii[nBoundaries-i-1];
         }
 
-        // debug
-        // std::cout<<"List of radii after:"<<std::endl;
-        // for(int i=0;i<radii.size();i++){
-        //   std::cout<<radii[i]<<std::endl;
-        // }
-
-        // debug
-        // std::cout<<"List of cs before:"<<std::endl;
-        // for(int i=0;i<nWeights+1;i++){
-        //   std::cout<<cs[i]<<std::endl;
-        // }
-        
         for(int i=0;i<nWeights;i++){
           as[i]*= list_weights[nWeights-i-1];
           bs[i]*= list_weights[nWeights-i-1];
           cs[i]*= list_weights[nWeights-i-1];
-          //std::cout<<"coeffs["<<i<<"] = list_weights["<<nWeights-i-1<<"]"<<std::endl;
         }
         as[nWeights]*= list_weights[0];
         bs[nWeights]*= list_weights[0];
         cs[nWeights]*= list_weights[0];
-        //std::cout<<"coeffs["<<nWeights<<"] = list_weights[0]"<<std::endl;
-        // debug
-        // std::cout<<"List of cs after:"<<std::endl;
-        // for(int i=0;i<nWeights+1;i++){
-        //   std::cout<<cs[i]<<std::endl;
-        // }
 
         setDensity(radii, as, bs, cs, yps);
       }
@@ -461,36 +435,14 @@ namespace cudaprob3{
           throw;
         }
 
-        // debug
-        // std::cout<<"List of radii before:"<<std::endl;
-        // for(int i=0;i<radii.size();i++){
-        //   std::cout<<radii[i]<<std::endl;
-        // }
-
         for(int i=0;i<nBoundaries;i++){
           radii[i] = list_radii[nBoundaries-i-1];
         }
         
-        // debug
-        // std::cout<<"List of radii after:"<<std::endl;
-        // for(int i=0;i<radii.size();i++){
-        //   std::cout<<radii[i]<<std::endl;
-        // }
-
-        // std::cout<<"List of rhos before:"<<std::endl;
-        // for(int i=0;i<nWeights+1;i++){
-        //   std::cout<<rhos[i]<<std::endl;
-        // }
-
         for(int i=0;i<nWeights;i++){
           rhos[i]*= list_weights[nWeights-i-1];
         }
         rhos[nWeights]*= list_weights[0];
-
-        // std::cout<<"List of rhos after:"<<std::endl;
-        // for(int i=0;i<nWeights+1;i++){
-        //   std::cout<<rhos[i]<<std::endl;
-        // }
 
         setDensity(radii, rhos, yps);
       }
