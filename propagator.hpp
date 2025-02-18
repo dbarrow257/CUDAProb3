@@ -395,6 +395,62 @@ namespace cudaprob3{
         n_layers = radii.size();
       }
 
+      virtual void ModifyEarthModelPoly(std::vector<FLOAT_T> list_radii, std::vector<FLOAT_T> list_weights){
+        
+        int nBoundaries(list_radii.size());
+        int nWeights(list_weights.size());
+
+        if(nBoundaries!=radii.size()-1 || nWeights!=radii.size()-1){
+          std::cout<<"Error in ModifyEarthModel(list_radii, list_weights)"<<std::endl;
+          std::cout<<"Expected "<<radii.size()-1<<" radii, got "<< nBoundaries <<std::endl;
+          std::cout<<"Expected "<<radii.size()-1<<" weights, got "<< nWeights <<std::endl;
+          throw;
+        }
+
+        for(int i=0;i<nBoundaries;i++){
+          radii[i] = list_radii[nBoundaries-i-1];
+        }
+
+        for(int i=0;i<nWeights;i++){
+          as[i]*= list_weights[nWeights-i-1];
+          bs[i]*= list_weights[nWeights-i-1];
+          cs[i]*= list_weights[nWeights-i-1];
+        }
+        as[nWeights]*= list_weights[0];
+        bs[nWeights]*= list_weights[0];
+        cs[nWeights]*= list_weights[0];
+
+        setDensity(radii, as, bs, cs, yps);
+      }
+
+      virtual void ModifyEarthModel(std::vector<FLOAT_T> list_radii, std::vector<FLOAT_T> list_weights){
+
+        int nBoundaries(list_radii.size());
+        int nWeights(list_weights.size());
+
+        if(nBoundaries!=radii.size()-1 || nWeights!=radii.size()-1){
+          std::cout<<"Error in ModifyEarthModel(list_radii, list_weights)"<<std::endl;
+          std::cout<<"Expected "<<radii.size()-1<<" radii, got "<< nBoundaries <<std::endl;
+          std::cout<<"Expected "<<radii.size()-1<<" weights, got "<< nWeights <<std::endl;
+          throw;
+        }
+
+        for(int i=0;i<nBoundaries;i++){
+          radii[i] = list_radii[nBoundaries-i-1];
+        }
+        
+        for(int i=0;i<nWeights;i++){
+          rhos[i]*= list_weights[nWeights-i-1];
+        }
+        rhos[nWeights]*= list_weights[0];
+
+        setDensity(radii, rhos, yps);
+      }
+
+      virtual bool PolynomialDensity(){
+        return UsePolyDensity;
+      }
+      
       /// \brief Set mixing angles and cp phase in radians
       /// @param theta12
       /// @param theta13
