@@ -823,43 +823,39 @@ namespace cudaprob3{
         for(unsigned index = blockIdx.x * blockDim.x + threadIdx.x; index < n_cosines * max_energies_per_path; index += blockDim.x * gridDim.x){
           const unsigned index_energy = index % max_energies_per_path;
           const unsigned index_cosine = index / max_energies_per_path;
+          if(index_energy < n_energies){
 #else
           // on the host, we use OpenMP to parallelize looping over cosines
-#pragma omp parallel for schedule(dynamic)
+          #pragma omp parallel for collapse(2) schedule(dynamic)
           for(int index_cosine = 0; index_cosine < n_cosines; index_cosine += 1) {
-#endif
-
-            // Which costheta are we concerned with
-            const FLOAT_T cosine_zenith = cosinelist[index_cosine];
-
-            // The length of earth for a trajectory of this cos(theta) in cm
-            const FLOAT_T TotalEarthLength =  -2.0*cosine_zenith*Constants<FLOAT_T>::REarthcm();
-            const int MaxLayer = maxlayers[index_cosine];
-
-            FLOAT_T phaseOffset = 0.;
-
-            const int nMaxLayers = Constants<FLOAT_T>::MaxNLayers();
-
-            math::ComplexNumber<FLOAT_T> TransitionMatrix[nNuFlav][nNuFlav];
-            math::ComplexNumber<FLOAT_T> TransitionMatrixCoreToMantle[nNuFlav][nNuFlav];
-            math::ComplexNumber<FLOAT_T> finalTransitionMatrix[nNuFlav][nNuFlav];
-            math::ComplexNumber<FLOAT_T> TransitionTemp[nNuFlav][nNuFlav];
-
-            math::ComplexNumber<FLOAT_T> ExpansionMatrix[nMaxLayers][nExp][nNuFlav][nNuFlav];
-            FLOAT_T arg[nMaxLayers][nNuFlav];
-
-            FLOAT_T Prob[nNuFlav][nNuFlav];
-
-            math::ComplexNumber<FLOAT_T> totalLenShiftFactor[nEig][nEig][nExp];
-            FLOAT_T darg0_ddistance[nNuFlav];
-
-            math::ComplexNumber<FLOAT_T> Product[nExp][nNuFlav][nNuFlav];
-
-#ifndef __CUDA_ARCH__
             for(int index_energy = 0; index_energy < n_energies; index_energy += 1){
-#else
-              if(index_energy < n_energies){
 #endif
+                // Which costheta are we concerned with
+                const FLOAT_T cosine_zenith = cosinelist[index_cosine];
+
+                // The length of earth for a trajectory of this cos(theta) in cm
+                const FLOAT_T TotalEarthLength =  -2.0*cosine_zenith*Constants<FLOAT_T>::REarthcm();
+                const int MaxLayer = maxlayers[index_cosine];
+
+                FLOAT_T phaseOffset = 0.;
+
+                const int nMaxLayers = Constants<FLOAT_T>::MaxNLayers();
+
+                math::ComplexNumber<FLOAT_T> TransitionMatrix[nNuFlav][nNuFlav];
+                math::ComplexNumber<FLOAT_T> TransitionMatrixCoreToMantle[nNuFlav][nNuFlav];
+                math::ComplexNumber<FLOAT_T> finalTransitionMatrix[nNuFlav][nNuFlav];
+                math::ComplexNumber<FLOAT_T> TransitionTemp[nNuFlav][nNuFlav];
+
+                math::ComplexNumber<FLOAT_T> ExpansionMatrix[nMaxLayers][nExp][nNuFlav][nNuFlav];
+                FLOAT_T arg[nMaxLayers][nNuFlav];
+
+                FLOAT_T Prob[nNuFlav][nNuFlav];
+
+                math::ComplexNumber<FLOAT_T> totalLenShiftFactor[nEig][nEig][nExp];
+                FLOAT_T darg0_ddistance[nNuFlav];
+
+                math::ComplexNumber<FLOAT_T> Product[nExp][nNuFlav][nNuFlav];
+
                 const FLOAT_T energy = energylist[index_energy];
 
                 //============================================================================================================
@@ -1019,10 +1015,10 @@ namespace cudaprob3{
                   UNROLLQUALIFIER
                     for (int iPathLength=0;iPathLength<nProductionHeightBins;iPathLength++) {
                       //PathLengthShifts is of size equal to the number of Production Height bin edges
-                      FLOAT_T h0 = PathLengthShifts[iPathLength];
-                      FLOAT_T h1 = PathLengthShifts[iPathLength+1];
-                      FLOAT_T hm = (h1+h0)/2.;
-                      FLOAT_T hw = (h1-h0);
+                      const FLOAT_T h0 = PathLengthShifts[iPathLength];
+                      const FLOAT_T h1 = PathLengthShifts[iPathLength+1];
+                      const FLOAT_T hm = (h1+h0)/2.;
+                      const FLOAT_T hw = (h1-h0);
 
                       UNROLLQUALIFIER
                         for (int iEig0=0;iEig0<nEig;iEig0++) { 
@@ -1048,7 +1044,7 @@ namespace cudaprob3{
                               UNROLLQUALIFIER
                                 for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) { //In flav
 
-                                  int ProbIndex = type*nNuFlav*n_energies*n_cosines*nProductionHeightBins + iNuFlav*n_energies*n_cosines*nProductionHeightBins
+                                  const int ProbIndex = type*nNuFlav*n_energies*n_cosines*nProductionHeightBins + iNuFlav*n_energies*n_cosines*nProductionHeightBins
                                     + index_energy*n_cosines*nProductionHeightBins + index_cosine*nProductionHeightBins + iPathLength;
                                   //productionHeight_prob_list is of size equal to the number of production height bins * nNuTypes * nNuFlavouts * n_energies * n_cosines
                                   FLOAT_T ProdHeightProb = productionHeight_prob_list[ProbIndex];
@@ -1104,9 +1100,9 @@ namespace cudaprob3{
                   for (int iExp=0;iExp<nExp;iExp++) {
 
                     UNROLLQUALIFIER
-                      for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++) { //Flavour before osc 
+                    for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) { //Flavour after osc
                         UNROLLQUALIFIER
-                          for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) { //Flavour after osc 
+                          for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++) { //Flavour before osc
                             Prob[iNuFlav][jNuFlav] += Product[iExp][iNuFlav][jNuFlav].re * Product[iExp][iNuFlav][jNuFlav].re + Product[iExp][iNuFlav][jNuFlav].im * Product[iExp][iNuFlav][jNuFlav].im;
                           }
                       }
@@ -1114,9 +1110,9 @@ namespace cudaprob3{
                     UNROLLQUALIFIER
                       for (int jExp=0;jExp<iExp;jExp++) { //Expansion * Expansion terms
                         UNROLLQUALIFIER
-                          for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++) { //Flavour before osc
+                          for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) { //Flavour after osc
                             UNROLLQUALIFIER
-                              for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) { //Flavour after osc
+                                for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++) { //Flavour before osc
                                 Prob[iNuFlav][jNuFlav] +=  2. * Product[jExp][iNuFlav][jNuFlav].re * Product[iExp][iNuFlav][jNuFlav].re * totalLenShiftFactor[iExp][jExp][jNuFlav].re
                                   +  2. * Product[jExp][iNuFlav][jNuFlav].im * Product[iExp][iNuFlav][jNuFlav].im * totalLenShiftFactor[iExp][jExp][jNuFlav].re
                                   +  2. * Product[jExp][iNuFlav][jNuFlav].im * Product[iExp][iNuFlav][jNuFlav].re * totalLenShiftFactor[iExp][jExp][jNuFlav].im
@@ -1130,9 +1126,9 @@ namespace cudaprob3{
                 //DB Fill Arrays
 
                 UNROLLQUALIFIER
-                  for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++){ //Flavour before osc
+                for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++){  //Flavour after osc
                     UNROLLQUALIFIER
-                      for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++){  //Flavour after osc
+                      for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++){ //Flavour before osc
 #ifdef __CUDA_ARCH__
                         const unsigned long long resultIndex = (unsigned long long)(n_energies) * (unsigned long long)(index_cosine) + (unsigned long long)(index_energy);
                         result[resultIndex + (unsigned long long)(n_energies) * (unsigned long long)(n_cosines) * (unsigned long long)((iNuFlav * nNuFlav + jNuFlav))] = Prob[jNuFlav][iNuFlav];
