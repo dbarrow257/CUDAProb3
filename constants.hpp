@@ -22,6 +22,8 @@ along with CUDAProb3++.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace cudaprob3{
 
+    double EarthRadius = 6371.0;
+    
     template<typename FLOAT_T>
     struct Constants{
         HOSTDEVICEQUALIFIER
@@ -31,7 +33,10 @@ namespace cudaprob3{
         static constexpr FLOAT_T km2cm(){ return 1.0e5; }
 
         HOSTDEVICEQUALIFIER
-        static constexpr FLOAT_T REarth(){ return 6371.0; }
+        static void SetEarthRadius(FLOAT_T EarthRadius_){ EarthRadius = EarthRadius_; }
+
+        HOSTDEVICEQUALIFIER
+        static constexpr FLOAT_T REarth(){ return EarthRadius; }
 
         HOSTDEVICEQUALIFIER
         static constexpr FLOAT_T REarthcm(){ return REarth() * km2cm(); }
@@ -43,7 +48,7 @@ namespace cudaprob3{
         static constexpr int MaxProdHeightBins(){ return 28; }
 
         HOSTDEVICEQUALIFIER
-        static constexpr int MaxNLayers(){ return 10; }
+        static constexpr int MaxNLayers(){ return 11; }
       
         HOSTDEVICEQUALIFIER
 	static constexpr FLOAT_T Epsilon(){ return 1e-6; }

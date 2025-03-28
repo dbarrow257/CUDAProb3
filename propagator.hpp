@@ -396,7 +396,7 @@ namespace cudaprob3{
       }
 
       virtual void ModifyEarthModelPoly(std::vector<FLOAT_T> list_radii, std::vector<FLOAT_T> list_weights){
-        
+        Constants<FLOAT_T>::SetEarthRadius(list_radii[list_radii.size() - 1]);
         int nBoundaries(list_radii.size());
         int nWeights(list_weights.size());
 
@@ -424,7 +424,7 @@ namespace cudaprob3{
       }
 
       virtual void ModifyEarthModel(std::vector<FLOAT_T> list_radii, std::vector<FLOAT_T> list_weights){
-
+        Constants<FLOAT_T>::SetEarthRadius(list_radii[list_radii.size() - 1]);
         int nBoundaries(list_radii.size());
         int nWeights(list_weights.size());
 
@@ -615,7 +615,7 @@ namespace cudaprob3{
           FLOAT_T c = cosineList[index_cosine];
           const int maxLayer = std::count_if(coslimit.begin(), coslimit.end(), [c](FLOAT_T limit){ return c < limit;});
 
-          if (maxLayer > Constants<FLOAT_T>::MaxNLayers()) {
+          if (maxLayer >= Constants<FLOAT_T>::MaxNLayers()) {
             std::cerr << "Invalid number of maxLayer:" << maxLayer << std::endl;
             std::cerr << "Need to increase value of Constants<FLOAT_T>::MaxNLayers() in $CUDAPROB3/constants.hpp" << std::endl;
             throw std::runtime_error("setMaxlayers : invalid number of maxLayer");
