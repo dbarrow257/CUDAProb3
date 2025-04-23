@@ -79,7 +79,8 @@ namespace cudaprob3{
             as = other.as;
             bs = other.bs;
             cs = other.cs;
-	    yps = other.yps;
+            ws = other.ws;
+	          yps = other.yps;
             coslimit = other.coslimit;
             Mix_U = other.Mix_U;
             dm = other.dm;
@@ -110,6 +111,7 @@ namespace cudaprob3{
             as = std::move(other.as);
             bs = std::move(other.bs);
             cs = std::move(other.cs);
+            ws = std::move(other.ws);
 	    yps = std::move(other.yps);
             coslimit = std::move(other.coslimit);
             Mix_U = std::move(other.Mix_U);
@@ -387,6 +389,7 @@ namespace cudaprob3{
 
           setDensity(radii_temp, a_temp, b_temp, c_temp, yps_temp);
 
+
         } else {
           std::cout << "Unsupported earty model in " << filename << std::endl;
           std::cout << "  Number of entries per line: " << nentries_old << std::endl;
@@ -396,6 +399,12 @@ namespace cudaprob3{
       }
 
       virtual void ModifyEarthModelPoly(std::vector<FLOAT_T> list_radii, std::vector<FLOAT_T> list_weights){
+
+        if(ws.size()==0){
+          std::vector<FLOAT_T> w_temp(list_weights.size(), 1.0f); 
+          ws=w_temp;
+        }
+
         Constants<FLOAT_T>::SetEarthRadius(list_radii[list_radii.size() - 1]);
         int nBoundaries(list_radii.size());
         int nWeights(list_weights.size());
@@ -412,18 +421,26 @@ namespace cudaprob3{
         }
 
         for(int i=0;i<nWeights;i++){
-          as[i]*= list_weights[nWeights-i-1];
-          bs[i]*= list_weights[nWeights-i-1];
-          cs[i]*= list_weights[nWeights-i-1];
+          as[i]*= list_weights[nWeights-i-1]/ws[nWeights-i-1];
+          bs[i]*= list_weights[nWeights-i-1]/ws[nWeights-i-1];
+          cs[i]*= list_weights[nWeights-i-1]/ws[nWeights-i-1];
         }
-        as[nWeights]*= list_weights[0];
-        bs[nWeights]*= list_weights[0];
-        cs[nWeights]*= list_weights[0];
+        as[nWeights]*= list_weights[0]/ws[0];
+        bs[nWeights]*= list_weights[0]/ws[0];
+        cs[nWeights]*= list_weights[0]/ws[0];
+
+        ws = list_weights;
 
         setDensity(radii, as, bs, cs, yps);
       }
 
       virtual void ModifyEarthModel(std::vector<FLOAT_T> list_radii, std::vector<FLOAT_T> list_weights){
+
+        if(ws.size()==0){
+          std::vector<FLOAT_T> w_temp(list_weights.size(), 1.0f); 
+          ws=w_temp;
+        }
+
         Constants<FLOAT_T>::SetEarthRadius(list_radii[list_radii.size() - 1]);
         int nBoundaries(list_radii.size());
         int nWeights(list_weights.size());
@@ -440,9 +457,11 @@ namespace cudaprob3{
         }
         
         for(int i=0;i<nWeights;i++){
-          rhos[i]*= list_weights[nWeights-i-1];
+          rhos[i]*= list_weights[nWeights-i-1]/ws[nWeights-i-1];
         }
-        rhos[nWeights]*= list_weights[0];
+        rhos[nWeights]*= list_weights[0]/ws[0];
+
+        ws = list_weights;
 
         setDensity(radii, rhos, yps);
       }
@@ -646,6 +665,7 @@ namespace cudaprob3{
       std::vector<FLOAT_T> as;
       std::vector<FLOAT_T> bs;
       std::vector<FLOAT_T> cs;
+      std::vector<FLOAT_T> ws;
       std::vector<FLOAT_T> yps;
       std::vector<FLOAT_T> coslimit;
 
