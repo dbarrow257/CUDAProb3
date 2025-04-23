@@ -22,7 +22,7 @@ along with CUDAProb3++.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace cudaprob3{
 
-    double EarthRadius = 6371.0;
+    FLOAT_T EarthRadius = 6371.0;
     
     template<typename FLOAT_T>
     struct Constants{
