@@ -420,14 +420,19 @@ namespace cudaprob3{
           radii[i] = list_radii[nBoundaries-i-1];
         }
 
+        FLOAT_T tmp_weights_ratio(1);
+
         for(int i=0;i<nWeights;i++){
-          as[i]*= list_weights[nWeights-i-1]/ws[nWeights-i-1];
-          bs[i]*= list_weights[nWeights-i-1]/ws[nWeights-i-1];
-          cs[i]*= list_weights[nWeights-i-1]/ws[nWeights-i-1];
+          tmp_weights_ratio = list_weights[nWeights-i-1]/ws[nWeights-i-1];
+          as[i]*= tmp_weights_ratio;
+          bs[i]*= tmp_weights_ratio;
+          cs[i]*= tmp_weights_ratio;
         }
-        as[nWeights]*= list_weights[0]/ws[0];
-        bs[nWeights]*= list_weights[0]/ws[0];
-        cs[nWeights]*= list_weights[0]/ws[0];
+
+        tmp_weights_ratio = list_weights[0]/ws[0];
+        as[nWeights]*= tmp_weights_ratio;
+        bs[nWeights]*= tmp_weights_ratio;
+        cs[nWeights]*= tmp_weights_ratio;
 
         ws = list_weights;
 
