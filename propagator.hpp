@@ -52,6 +52,9 @@ namespace cudaprob3{
             energyList.resize(n_energies);
             cosineList.resize(n_cosines);
             maxlayers.resize(n_cosines);
+
+            // Set EarthRadius explicitly for CUDA
+            Constants<FLOAT_T>::SetEarthRadius(6371.0);
         }
 
         /// \brief Copy constructor
