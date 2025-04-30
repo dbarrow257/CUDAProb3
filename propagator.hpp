@@ -581,9 +581,10 @@ namespace cudaprob3{
           throw std::runtime_error("Propagator::setProductionHeightList. Trying to set Production Height information but propagator is not expecting to use it");
         }
 
-        if (list_prob.size() != this->nProductionHeightBins*2*3*n_energies*n_cosines) {
-          throw std::runtime_error("Propagator::setProductionHeightList. Prob array is not the expected size");
-        }
+	size_t expected_size = static_cast<size_t>(this->nProductionHeightBins) * 2 * 3 * n_energies * n_cosines;
+	if (list_prob.size() != expected_size) {
+	  throw std::runtime_error("Propagator::setProductionHeightList. Prob array is not the expected size");
+	}
 
         if (list_bins.size()-1 != this->nProductionHeightBins) {
           throw std::runtime_error("Propagator::setProductionHeightList. ProductionHeightBins array is not expected size");
