@@ -22,9 +22,33 @@ along with CUDAProb3++.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace cudaprob3{
 
+    // KS This terrible piece of pragmas is to supress very annoying warnings when compiling code
+    #if defined(__CUDACC__)
+    #pragma diag_push
+    #pragma diag_suppress=1835
+    #endif
+
+    #if defined(__clang__)
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Wattributes"
+    #elif defined(__GNUC__)
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wattributes"
+    #endif
+
     HOSTDEVICEQUALIFIER
     FLOAT_T EarthRadius = 6371.0;
-    
+
+    #if defined(__clang__)
+    #pragma clang diagnostic pop
+    #elif defined(__GNUC__)
+    #pragma GCC diagnostic pop
+    #endif
+
+    #if defined(__CUDACC__)
+    #pragma diag_pop
+    #endif
+
     template<typename FLOAT_T>
     struct Constants{
         HOSTDEVICEQUALIFIER
