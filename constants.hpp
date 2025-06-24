@@ -67,6 +67,12 @@ namespace cudaprob3{
         static constexpr FLOAT_T REarthcm(){ return REarth() * km2cm(); }
 
         HOSTDEVICEQUALIFIER
+        static constexpr FLOAT_T REarthcm2(){ return REarthcm() * REarthcm(); }
+
+        HOSTDEVICEQUALIFIER
+        static constexpr FLOAT_T TwoPiOverThree() { return 2.0 * M_PI / 3.0; }
+
+        HOSTDEVICEQUALIFIER
         static constexpr FLOAT_T density_convert(){ return 0.5; }
 
         HOSTDEVICEQUALIFIER

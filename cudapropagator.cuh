@@ -203,7 +203,7 @@ namespace cudaprob3{
           Propagator<FLOAT_T>::setProductionHeightList(list_prob, list_bins); //set host production height list
 
           cudaMemcpy(d_productionHeight_prob_list.get(), this->productionHeightList_prob.data(), sizeof(FLOAT_T)*Constants<FLOAT_T>::MaxProdHeightBins()*2*3*this->n_energies*this->n_cosines, H2D); CUERR;
-          cudaMemcpy(d_productionHeight_bins_list.get(), this->productionHeightList_bins.data(), sizeof(FLOAT_T)*(Constants<FLOAT_T>::MaxProdHeightBins()+1), H2D); CUERR;
+          cudaMemcpy(d_productionHeightList_paths.get(), this->productionHeightList_paths.data(), sizeof(FLOAT_T)*(Constants<FLOAT_T>::MaxProdHeightBins()+1)*this->n_cosines , H2D); CUERR;
         }
 
         // calculate the probability of each cell
@@ -311,7 +311,7 @@ namespace cudaprob3{
               this->useProductionHeightAveraging,
               this->nProductionHeightBins,
               d_productionHeight_prob_list.get(),
-              d_productionHeight_bins_list.get(),
+              d_productionHeightList_paths.get(),
               this->UsePolyDensity,
               d_result_list.get());
 
@@ -349,7 +349,7 @@ namespace cudaprob3{
         unique_dev_ptr<FLOAT_T> d_energy_list;
         unique_dev_ptr<FLOAT_T> d_cosine_list;
         unique_dev_ptr<FLOAT_T> d_productionHeight_prob_list;
-        unique_dev_ptr<FLOAT_T> d_productionHeight_bins_list;
+        unique_dev_ptr<FLOAT_T> d_productionHeightList_paths;
         shared_dev_ptr<FLOAT_T> d_result_list;
 
         cudaStream_t stream;

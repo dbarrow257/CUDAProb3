@@ -612,6 +612,22 @@ namespace cudaprob3{
           productionHeightList_bins[i] = list_bins[i];
         }
 
+
+        const int nMaxProductionHeightBins = Constants<FLOAT_T>::MaxProdHeightBins();
+        productionHeightList_paths.resize((nMaxProductionHeightBins+1)*n_cosines);
+
+        for(int index_cosine = 0; index_cosine < n_cosines; index_cosine += 1) {
+          const FLOAT_T cosine_zenith = cosineList[index_cosine];
+          const FLOAT_T PathLength = sqrt((Constants<FLOAT_T>::REarthcm() + ProductionHeightinCentimeter )*(Constants<FLOAT_T>::REarthcm() + ProductionHeightinCentimeter)
+          - (Constants<FLOAT_T>::REarthcm()*Constants<FLOAT_T>::REarthcm())*( 1 - cosine_zenith*cosine_zenith)) - Constants<FLOAT_T>::REarthcm()*cosine_zenith;
+          for (int iProductionHeight=0;iProductionHeight<(nProductionHeightBins+1);iProductionHeight++) {
+            FLOAT_T iVal_ProdHeightInCentimeter = Constants<FLOAT_T>::km2cm() * productionHeightList_bins[iProductionHeight];
+            FLOAT_T iVal_PathLength = (sqrt((Constants<FLOAT_T>::REarthcm() + iVal_ProdHeightInCentimeter )*(Constants<FLOAT_T>::REarthcm() + iVal_ProdHeightInCentimeter)
+            - Constants<FLOAT_T>::REarthcm2()*( 1 - cosine_zenith*cosine_zenith)) - Constants<FLOAT_T>::REarthcm()*cosine_zenith);
+
+            productionHeightList_paths.at(index_cosine * (nProductionHeightBins + 1) + iProductionHeight) = iVal_PathLength - PathLength;
+          }
+        }
         isSetProductionHeightArray = true;
       }
 
@@ -668,6 +684,8 @@ namespace cudaprob3{
 
       std::vector<FLOAT_T> productionHeightList_prob;
       std::vector<FLOAT_T> productionHeightList_bins;
+
+      std::vector<FLOAT_T> productionHeightList_paths;
 
       std::vector<FLOAT_T> radii;
       std::vector<FLOAT_T> rhos;

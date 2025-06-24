@@ -197,30 +197,29 @@ namespace cudaprob3{
     //
     template<typename FLOAT_T>
       void prepare_getMfast(NeutrinoType type) {
-        FLOAT_T alphaV, betaV, gammaV, argV, tmpV;
-        FLOAT_T theta0V, theta1V, theta2V;
         FLOAT_T mMatV[3];
 
         /* The strategy to sort out the three roots is to compute the vacuum
          * mass the same way as the "matter" masses are computed then to sort
          * the results according to the input vacuum masses
          */
-        alphaV = DM(0,1) + DM(0,2);
-        betaV = DM(0,1) * DM(0,2);
-        gammaV = 0.0;
+        FLOAT_T alphaV = DM(0,1) + DM(0,2);
+        FLOAT_T alphaV2 = alphaV*alphaV;
+        FLOAT_T betaV = DM(0,1) * DM(0,2);
+        FLOAT_T gammaV = 0.0;
 
         /* Compute the argument of the arc-cosine */
-        tmpV = alphaV*alphaV-3.0*betaV;
+        FLOAT_T tmpV = alphaV2-3.0*betaV;
 
         /* Equation (21) */
-        argV = (2.0*alphaV*alphaV*alphaV-9.0*alphaV*betaV+27.0*gammaV)/
+        FLOAT_T argV = (2.0*alphaV2*alphaV-9.0*alphaV*betaV+27.0*gammaV)/
           (2.0*sqrt(tmpV*tmpV*tmpV));
         if (fabs(argV)>1.0) argV = argV/fabs(argV);
 
         /* These are the three roots the paper refers to */
-        theta0V = acos(argV)/3.0;
-        theta1V = theta0V-(2.0*M_PI/3.0);
-        theta2V = theta0V+(2.0*M_PI/3.0);
+        FLOAT_T theta0V = acos(argV)/3.0;
+        FLOAT_T theta1V = theta0V - Constants<FLOAT_T>::TwoPiOverThree();
+        FLOAT_T theta2V = theta0V + Constants<FLOAT_T>::TwoPiOverThree();
 
         mMatV[0] = mMatV[1] = mMatV[2] = -(2.0/3.0)*sqrt(tmpV);
         mMatV[0] *= cos(theta0V); mMatV[1] *= cos(theta1V); mMatV[2] *= cos(theta2V);
@@ -267,7 +266,7 @@ namespace cudaprob3{
       HOSTDEVICEQUALIFIER
       void getMfast(const FLOAT_T Enu, const FLOAT_T rho,
           const NeutrinoType type,
-          FLOAT_T d_dmMatMat[][3], FLOAT_T d_dmMatVac[][3]) {
+          FLOAT_T d_dmMatMat[3][3], FLOAT_T d_dmMatVac[3][3]) {
 
         FLOAT_T mMatU[3], mMat[3];
 
@@ -280,6 +279,7 @@ namespace cudaprob3{
         }();
 
         const FLOAT_T alpha  = fac + DM(0,1) + DM(0,2);
+        const FLOAT_T alpha2  = alpha * alpha;
 
         const FLOAT_T beta = DM(0,1)*DM(0,2) +
           fac*(DM(0,1)*(1.0 -
@@ -293,10 +293,10 @@ namespace cudaprob3{
         const FLOAT_T gamma = fac*DM(0,1)*DM(0,2)*(U(0,0).re * U(0,0).re + U(0,0).im * U(0,0).im);
 
         /* Compute the argument of the arc-cosine */
-        const FLOAT_T tmp = alpha*alpha-3.0*beta < 0 ? 0 : alpha*alpha-3.0*beta;
+        const FLOAT_T tmp = alpha2-3.0*beta < 0 ? 0 : alpha2-3.0*beta;
 
         /* Equation (21) */
-        const FLOAT_T argtmp = (2.0*alpha*alpha*alpha-9.0*alpha*beta+27.0*gamma)/
+        const FLOAT_T argtmp = (2.0*alpha2*alpha-9.0*alpha*beta+27.0*gamma)/
           (2.0*sqrt(tmp*tmp*tmp));
         const FLOAT_T arg = [&]() -> FLOAT_T {
           if (fabs(argtmp)>1.0)
@@ -307,12 +307,13 @@ namespace cudaprob3{
 
         /* These are the three roots the paper refers to */
         const FLOAT_T theta0 = acos(arg)/3.0;
-        const FLOAT_T theta1 = theta0-(2.0*M_PI/3.0);
-        const FLOAT_T theta2 = theta0+(2.0*M_PI/3.0);
+        const FLOAT_T theta1 = theta0 - Constants<FLOAT_T>::TwoPiOverThree();
+        const FLOAT_T theta2 = theta0 + Constants<FLOAT_T>::TwoPiOverThree();
 
-        mMatU[0] = -(2.0/3.0)*sqrt(tmp);
-        mMatU[1] = -(2.0/3.0)*sqrt(tmp);
-        mMatU[2] = -(2.0/3.0)*sqrt(tmp);
+        const FLOAT_T baseVal = -(2.0 / 3.0) * sqrt(tmp);
+        mMatU[0] = baseVal;
+        mMatU[1] = baseVal;
+        mMatU[2] = baseVal;
         mMatU[0] *= cos(theta0);
         mMatU[1] *= cos(theta1);
         mMatU[2] *= cos(theta2);
@@ -481,10 +482,11 @@ namespace cudaprob3{
 
             for (int i=0; i<nNuFlav; i++) {
               for (int j=0; j<nNuFlav; j++) {
-                RR_nk[j] += U(iNuFlav,i).re * product[i][j][iExp].re;
-                RI_nk[j] += U(iNuFlav,i).re * product[i][j][iExp].im;
-                IR_nk[j] += U(iNuFlav,i).im * product[i][j][iExp].re;
-                II_nk[j] += U(iNuFlav,i).im * product[i][j][iExp].im;
+                const math::ComplexNumber<FLOAT_T>& p = product[i][j][iExp];
+                RR_nk[j] += U(iNuFlav,i).re * p.re;
+                RI_nk[j] += U(iNuFlav,i).re * p.im;
+                IR_nk[j] += U(iNuFlav,i).im * p.re;
+                II_nk[j] += U(iNuFlav,i).im * p.im;
               }
             }
 
@@ -492,24 +494,18 @@ namespace cudaprob3{
               FLOAT_T ReSum=0., ImSum=0.;
 
               for (int j=0; j<nNuFlav; j++) {
-                ReSum += RR_nk[j] * U(jNuFlav,j).re;
-                ReSum += RI_nk[j] * U(jNuFlav,j).im;
-                ReSum += IR_nk[j] * U(jNuFlav,j).im;
-                ReSum -= II_nk[j] * U(jNuFlav,j).re;
-
-                ImSum += II_nk[j] * U(jNuFlav,j).im;
-                ImSum += IR_nk[j] * U(jNuFlav,j).re;
-                ImSum += RI_nk[j] * U(jNuFlav,j).re;
-                ImSum -= RR_nk[j] * U(jNuFlav,j).im;
+                const FLOAT_T u_re = U(jNuFlav, j).re;
+                const FLOAT_T u_im = U(jNuFlav, j).im;
+                // Combine real and imaginary sums using cached U parts
+                ReSum += (RR_nk[j] - II_nk[j]) * u_re + (RI_nk[j] + IR_nk[j]) * u_im;
+                ImSum += (IR_nk[j] + RI_nk[j]) * u_re + (II_nk[j] - RR_nk[j]) * u_im;
               }
 
               C[iExp][iNuFlav][jNuFlav].re = ReSum;
               C[iExp][iNuFlav][jNuFlav].im = ImSum;
-
             }
           }
         }
-
       }
 
     template<typename FLOAT_T>
@@ -574,7 +570,7 @@ namespace cudaprob3{
                 A[n][m].re = 0;
                 A[n][m].im = 0;
               }
-          }	      
+          }
         UNROLLQUALIFIER
           for (int n=0; n<3; n++) {
             UNROLLQUALIFIER
@@ -800,10 +796,10 @@ namespace cudaprob3{
           const FLOAT_T* const yps,
           const int* const maxlayers,
           FLOAT_T ProductionHeightinCentimeter,
-          bool useProductionHeightAveraging,
-          int nProductionHeightBins,
+          const bool useProductionHeightAveraging,
+          const int nProductionHeightBins,
           const FLOAT_T* const productionHeight_prob_list, // 20 (nBins) * 2 (nu,nubar) * 3 (e,mu,tau) * n_energies * n_cosines
-          const FLOAT_T* const productionHeight_binedges_list, // 21 (BinEdges) in cm
+          const FLOAT_T* const PathLengthShifts, // 21 (BinEdges) in cm
           bool UsePolyDensity, // Use polynomial density?
           FLOAT_T* const result){
 
@@ -889,7 +885,7 @@ namespace cudaprob3{
                 // DB PathLength is used to calculate the distance traversed
                 // in cm
                 const FLOAT_T PathLength = sqrt((Constants<FLOAT_T>::REarthcm() + ProductionHeightinCentimeter )*(Constants<FLOAT_T>::REarthcm() + ProductionHeightinCentimeter)
-                    - (Constants<FLOAT_T>::REarthcm()*Constants<FLOAT_T>::REarthcm())*( 1 - cosine_zenith*cosine_zenith)) - Constants<FLOAT_T>::REarthcm()*cosine_zenith;
+                    - Constants<FLOAT_T>::REarthcm2()*( 1 - cosine_zenith*cosine_zenith)) - Constants<FLOAT_T>::REarthcm()*cosine_zenith;
 
                 //============================================================================================================
                 //DB Loop over layers		    
@@ -974,7 +970,6 @@ namespace cudaprob3{
                     multiply_complex_matrix( TransitionMatrix, finalTransitionMatrix, TransitionTemp );
                     copy_complex_matrix( TransitionTemp, finalTransitionMatrix );
                   }
-
                 }
 
                 // calculate final transition matrix
@@ -999,33 +994,26 @@ namespace cudaprob3{
                             }
                         }
                     }
-
-                  const int nMaxProductionHeightBins = Constants<FLOAT_T>::MaxProdHeightBins();
-                  FLOAT_T PathLengthShifts[nMaxProductionHeightBins+1];
-
-                  UNROLLQUALIFIER
-                    for (int iProductionHeight=0;iProductionHeight<(nProductionHeightBins+1);iProductionHeight++) {
-                      FLOAT_T iVal_ProdHeightInCentimeter = Constants<FLOAT_T>::km2cm() * productionHeight_binedges_list[iProductionHeight];
-                      FLOAT_T iVal_PathLength = (sqrt((Constants<FLOAT_T>::REarthcm() + iVal_ProdHeightInCentimeter )*(Constants<FLOAT_T>::REarthcm() + iVal_ProdHeightInCentimeter)
-                            - (Constants<FLOAT_T>::REarthcm()*Constants<FLOAT_T>::REarthcm())*( 1 - cosine_zenith*cosine_zenith)) - Constants<FLOAT_T>::REarthcm()*cosine_zenith);
-
-                      PathLengthShifts[iProductionHeight] = iVal_PathLength - PathLength;
-                    }
-
+                  const int cosineStride = n_cosines * nProductionHeightBins;
+                  const int energyStride = n_energies * cosineStride;
+                  const int constProb_Index = index_energy * cosineStride + index_cosine*nProductionHeightBins;
+                  const int typeStride = type * nNuFlav * energyStride;
+                  const int PathLengthIndex = index_cosine*(nProductionHeightBins+1);
                   UNROLLQUALIFIER
                     for (int iPathLength=0;iPathLength<nProductionHeightBins;iPathLength++) {
                       //PathLengthShifts is of size equal to the number of Production Height bin edges
-                      const FLOAT_T h0 = PathLengthShifts[iPathLength];
-                      const FLOAT_T h1 = PathLengthShifts[iPathLength+1];
+                      const FLOAT_T h0 = PathLengthShifts[PathLengthIndex + iPathLength];
+                      const FLOAT_T h1 = PathLengthShifts[PathLengthIndex + iPathLength+1];
                       const FLOAT_T hm = (h1+h0)/2.;
                       const FLOAT_T hw = (h1-h0);
+
 
                       UNROLLQUALIFIER
                         for (int iEig0=0;iEig0<nEig;iEig0++) { 
                           UNROLLQUALIFIER
                             for (int jEig0=0;jEig0<iEig0;jEig0++) { 
-                              FLOAT_T darg_distance = darg0_ddistance[iEig0]-darg0_ddistance[jEig0];
-
+                              const FLOAT_T darg_distance = darg0_ddistance[iEig0]-darg0_ddistance[jEig0];
+                              const FLOAT_T darg_hm = darg_distance * hm;
                               //factor.re = 0
                               //factor.im = darg_distance*hm
                               //
@@ -1036,24 +1024,28 @@ namespace cudaprob3{
                               //sinc(0.5 * darg_distance * hw) * exp(factor).re = sinc(0.5 * darg_distance * hw) * sin(darg_distance * hm)
 
                               math::ComplexNumber<FLOAT_T> sinc_exp_factor; 
-                              FLOAT_T Sinc_Arg = 0.5 * darg_distance * hw;
+                              FLOAT_T Sinc_Arg = 0.5 * darg_hm;
 
-                              sinc_exp_factor.re = cudaprob3::math::defined_sinc(Sinc_Arg) * cos(darg_distance * hm);
-                              sinc_exp_factor.im = cudaprob3::math::defined_sinc(Sinc_Arg) * sin(darg_distance * hm);
+                              sinc_exp_factor.re = cudaprob3::math::defined_sinc(Sinc_Arg) * cos(darg_hm);
+                              sinc_exp_factor.im = cudaprob3::math::defined_sinc(Sinc_Arg) * sin(darg_hm);
 
                               UNROLLQUALIFIER
                                 for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) { //In flav
 
-                                  const int ProbIndex = type*nNuFlav*n_energies*n_cosines*nProductionHeightBins + iNuFlav*n_energies*n_cosines*nProductionHeightBins
-                                    + index_energy*n_cosines*nProductionHeightBins + index_cosine*nProductionHeightBins + iPathLength;
+                                  const int ProbIndex = typeStride + iNuFlav * energyStride + constProb_Index  + iPathLength;
+                                  // If you prefer less compact path
+                                  //const int ProbIndex = type*nNuFlav*n_energies*n_cosines*nProductionHeightBins + iNuFlav*n_energies*n_cosines*nProductionHeightBins
+                                  //+ index_energy*n_cosines*nProductionHeightBins + index_cosine*nProductionHeightBins + iPathLength;
                                   //productionHeight_prob_list is of size equal to the number of production height bins * nNuTypes * nNuFlavouts * n_energies * n_cosines
                                   FLOAT_T ProdHeightProb = productionHeight_prob_list[ProbIndex];
+                                  FLOAT_T deltaRe = ProdHeightProb * sinc_exp_factor.re;
+                                  FLOAT_T deltaIm = ProdHeightProb * sinc_exp_factor.im;
 
-                                  totalLenShiftFactor[iEig0][jEig0][iNuFlav].re += ProdHeightProb * sinc_exp_factor.re;
-                                  totalLenShiftFactor[iEig0][jEig0][iNuFlav].im += ProdHeightProb * sinc_exp_factor.im;
+                                  totalLenShiftFactor[iEig0][jEig0][iNuFlav].re += deltaRe;
+                                  totalLenShiftFactor[iEig0][jEig0][iNuFlav].im += deltaIm;
 
-                                  totalLenShiftFactor[jEig0][iEig0][iNuFlav].re += ProdHeightProb * sinc_exp_factor.re;
-                                  totalLenShiftFactor[jEig0][iEig0][iNuFlav].im -= ProdHeightProb * sinc_exp_factor.im;
+                                  totalLenShiftFactor[jEig0][iEig0][iNuFlav].re += deltaRe;
+                                  totalLenShiftFactor[jEig0][iEig0][iNuFlav].im -= deltaIm;
                                 }
                             }
                         }
@@ -1163,7 +1155,7 @@ namespace cudaprob3{
                 bool useProductionHeightAveraging,
                 int nProductionHeightBins,
                 const FLOAT_T* const productionHeight_prob_list,
-                const FLOAT_T* const productionHeight_binedges_list,
+                const FLOAT_T* const PathLengthShifts,
                 bool UsePolyDensity,
                 FLOAT_T* const result){
 
@@ -1183,7 +1175,7 @@ namespace cudaprob3{
                   useProductionHeightAveraging, 
                   nProductionHeightBins, 
                   productionHeight_prob_list, 
-                  productionHeight_binedges_list, 
+                  PathLengthShifts,
                   UsePolyDensity,
                   result);
             }
@@ -1208,7 +1200,7 @@ namespace cudaprob3{
                 bool useProductionHeightAveraging,
                 int nProductionHeightBins,
                 const FLOAT_T* const productionHeight_prob_list,
-                const FLOAT_T* const productionHeight_binedges_list,
+                const FLOAT_T* const PathLengthShifts,
                 bool UsePolyDensity,
                 FLOAT_T* const result){
 
@@ -1229,19 +1221,12 @@ namespace cudaprob3{
                   useProductionHeightAveraging, 
                   nProductionHeightBins, 
                   productionHeight_prob_list, 
-                  productionHeight_binedges_list,  
+                  PathLengthShifts,
                   UsePolyDensity,
                   result);
               CUERR;
             }
 #endif
-
         }// namespace physics
-
       } // namespace cudaprob3
-
-
-
-
-
 #endif
