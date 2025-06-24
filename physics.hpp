@@ -1002,11 +1002,11 @@ namespace cudaprob3{
                   UNROLLQUALIFIER
                     for (int iPathLength=0;iPathLength<nProductionHeightBins;iPathLength++) {
                       //PathLengthShifts is of size equal to the number of Production Height bin edges
+
                       const FLOAT_T h0 = PathLengthShifts[PathLengthIndex + iPathLength];
                       const FLOAT_T h1 = PathLengthShifts[PathLengthIndex + iPathLength+1];
                       const FLOAT_T hm = (h1+h0)/2.;
                       const FLOAT_T hw = (h1-h0);
-
 
                       UNROLLQUALIFIER
                         for (int iEig0=0;iEig0<nEig;iEig0++) { 
@@ -1024,7 +1024,7 @@ namespace cudaprob3{
                               //sinc(0.5 * darg_distance * hw) * exp(factor).re = sinc(0.5 * darg_distance * hw) * sin(darg_distance * hm)
 
                               math::ComplexNumber<FLOAT_T> sinc_exp_factor; 
-                              FLOAT_T Sinc_Arg = 0.5 * darg_hm;
+                              FLOAT_T Sinc_Arg = 0.5 * darg_distance * hw;
 
                               sinc_exp_factor.re = cudaprob3::math::defined_sinc(Sinc_Arg) * cos(darg_hm);
                               sinc_exp_factor.im = cudaprob3::math::defined_sinc(Sinc_Arg) * sin(darg_hm);
