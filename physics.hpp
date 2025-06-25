@@ -764,13 +764,13 @@ namespace cudaprob3{
         // Impact parameter for this cos zenith (nearest distance from center)
         // in km this time
         const FLOAT_T R2min = Constants<FLOAT_T>::REarth()*Constants<FLOAT_T>::REarth()*(1-cosine_zenith*cosine_zenith);
-
+        const FLOAT_T sqrt_R2min = sqrt(R2min);
         // in km
         FLOAT_T CrossThis = 2.0*sqrt(radii[i]*radii[i] - R2min);
-        if (sqrt(R2min) > radii[i]) CrossThis = 0;
+        if (sqrt_R2min > radii[i]) CrossThis = 0;
         // in km
         FLOAT_T CrossNext = 2.0*sqrt(radii[i+1]*radii[i+1] - R2min);
-        if (sqrt(R2min) > radii[i+1]) CrossNext = 0;
+        if (sqrt_R2min > radii[i+1]) CrossNext = 0;
 
         if (i < max_layer - 1) {
           // Convert to cm
@@ -783,25 +783,25 @@ namespace cudaprob3{
 
     template<typename FLOAT_T>
       HOSTDEVICEQUALIFIER
-      void calculate(NeutrinoType type,
-          const FLOAT_T* const cosinelist,
-          int n_cosines,
-          const FLOAT_T* const energylist,
-          int n_energies,
-          const FLOAT_T* const radii,
-          const FLOAT_T* const as,
-          const FLOAT_T* const bs,
-          const FLOAT_T* const cs,
-          const FLOAT_T* const rhos,
-          const FLOAT_T* const yps,
-          const int* const maxlayers,
-          FLOAT_T ProductionHeightinCentimeter,
+      void calculate(const NeutrinoType type,
+          const FLOAT_T* __restrict__ cosinelist,
+          const int n_cosines,
+          const FLOAT_T* __restrict__ energylist,
+          const int n_energies,
+          const FLOAT_T* __restrict__ radii,
+          const FLOAT_T* __restrict__ as,
+          const FLOAT_T* __restrict__ bs,
+          const FLOAT_T* __restrict__ cs,
+          const FLOAT_T* __restrict__ rhos,
+          const FLOAT_T* __restrict__ yps,
+          const int* __restrict__  maxlayers,
+          const FLOAT_T ProductionHeightinCentimeter,
           const bool useProductionHeightAveraging,
           const int nProductionHeightBins,
-          const FLOAT_T* const productionHeight_prob_list, // 20 (nBins) * 2 (nu,nubar) * 3 (e,mu,tau) * n_energies * n_cosines
-          const FLOAT_T* const PathLengthShifts, // 21 (BinEdges) in cm
-          bool UsePolyDensity, // Use polynomial density?
-          FLOAT_T* const result){
+          const FLOAT_T* __restrict__ productionHeight_prob_list, // 20 (nBins) * 2 (nu,nubar) * 3 (e,mu,tau) * n_energies * n_cosines
+          const FLOAT_T* __restrict__ PathLength_hm_hw, // 21 (BinEdges) in cm
+          const bool UsePolyDensity, // Use polynomial density?
+          FLOAT_T* const result) {
 
         //prepare more constant data. For the kernel, this is done by the wrapper function callCalculateKernelAsync
 #ifndef __CUDA_ARCH__
@@ -996,17 +996,14 @@ namespace cudaprob3{
                     }
                   const int cosineStride = n_cosines * nProductionHeightBins;
                   const int energyStride = n_energies * cosineStride;
-                  const int constProb_Index = index_energy * cosineStride + index_cosine*nProductionHeightBins;
+                  const int cosineProdHeightOffset = index_cosine * nProductionHeightBins;
+                  const int constProb_Index = index_energy * cosineStride + cosineProdHeightOffset;
                   const int typeStride = type * nNuFlav * energyStride;
-                  const int PathLengthIndex = index_cosine*(nProductionHeightBins+1);
+                  const int PathLengthIndex = cosineProdHeightOffset * 2;
                   UNROLLQUALIFIER
                     for (int iPathLength=0;iPathLength<nProductionHeightBins;iPathLength++) {
-                      //PathLengthShifts is of size equal to the number of Production Height bin edges
-
-                      const FLOAT_T h0 = PathLengthShifts[PathLengthIndex + iPathLength];
-                      const FLOAT_T h1 = PathLengthShifts[PathLengthIndex + iPathLength+1];
-                      const FLOAT_T hm = (h1+h0)/2.;
-                      const FLOAT_T hw = (h1-h0);
+                      const FLOAT_T hm = PathLength_hm_hw[PathLengthIndex + 2 * iPathLength];
+                      const FLOAT_T hw = PathLength_hm_hw[PathLengthIndex + 2 * iPathLength + 1];
 
                       UNROLLQUALIFIER
                         for (int iEig0=0;iEig0<nEig;iEig0++) { 
@@ -1025,10 +1022,10 @@ namespace cudaprob3{
 
                               math::ComplexNumber<FLOAT_T> sinc_exp_factor; 
                               FLOAT_T Sinc_Arg = 0.5 * darg_distance * hw;
+                              FLOAT_T SincVal  = cudaprob3::math::defined_sinc(Sinc_Arg);
 
-                              sinc_exp_factor.re = cudaprob3::math::defined_sinc(Sinc_Arg) * cos(darg_hm);
-                              sinc_exp_factor.im = cudaprob3::math::defined_sinc(Sinc_Arg) * sin(darg_hm);
-
+                              sinc_exp_factor.re = SincVal * cos(darg_hm);
+                              sinc_exp_factor.im = SincVal * sin(darg_hm);
                               UNROLLQUALIFIER
                                 for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) { //In flav
 
@@ -1037,9 +1034,9 @@ namespace cudaprob3{
                                   //const int ProbIndex = type*nNuFlav*n_energies*n_cosines*nProductionHeightBins + iNuFlav*n_energies*n_cosines*nProductionHeightBins
                                   //+ index_energy*n_cosines*nProductionHeightBins + index_cosine*nProductionHeightBins + iPathLength;
                                   //productionHeight_prob_list is of size equal to the number of production height bins * nNuTypes * nNuFlavouts * n_energies * n_cosines
-                                  FLOAT_T ProdHeightProb = productionHeight_prob_list[ProbIndex];
-                                  FLOAT_T deltaRe = ProdHeightProb * sinc_exp_factor.re;
-                                  FLOAT_T deltaIm = ProdHeightProb * sinc_exp_factor.im;
+                                  const FLOAT_T ProdHeightProb = productionHeight_prob_list[ProbIndex];
+                                  const FLOAT_T deltaRe = ProdHeightProb * sinc_exp_factor.re;
+                                  const FLOAT_T deltaIm = ProdHeightProb * sinc_exp_factor.im;
 
                                   totalLenShiftFactor[iEig0][jEig0][iNuFlav].re += deltaRe;
                                   totalLenShiftFactor[iEig0][jEig0][iNuFlav].im += deltaIm;
@@ -1139,23 +1136,23 @@ namespace cudaprob3{
           template<typename FLOAT_T>
             KERNEL
             __launch_bounds__( 64, 8 )
-            void calculateKernel(NeutrinoType type,
-                const FLOAT_T* const cosinelist,
-                int n_cosines,
-                const FLOAT_T* const energylist,
-                int n_energies,
-                const FLOAT_T* const radii,
-                const FLOAT_T* const as,
-                const FLOAT_T* const bs,
-                const FLOAT_T* const cs,
-                const FLOAT_T* const rhos,
-                const FLOAT_T* const yps,
-                const int* const maxlayers,
-                FLOAT_T ProductionHeightinCentimeter,
-                bool useProductionHeightAveraging,
-                int nProductionHeightBins,
-                const FLOAT_T* const productionHeight_prob_list,
-                const FLOAT_T* const PathLengthShifts,
+            void calculateKernel(const NeutrinoType type,
+                const FLOAT_T* __restrict__ cosinelist,
+                const int n_cosines,
+                const FLOAT_T* __restrict__ energylist,
+                const int n_energies,
+                const FLOAT_T* __restrict__ radii,
+                const FLOAT_T* __restrict__ as,
+                const FLOAT_T* __restrict__ bs,
+                const FLOAT_T* __restrict__ cs,
+                const FLOAT_T* __restrict__ rhos,
+                const FLOAT_T* __restrict__ yps,
+                const int* __restrict__ maxlayers,
+                const FLOAT_T ProductionHeightinCentimeter,
+                const bool useProductionHeightAveraging,
+                const int nProductionHeightBins,
+                const FLOAT_T* __restrict__ productionHeight_prob_list,
+                const FLOAT_T* __restrict__ PathLength_hm_hw,
                 bool UsePolyDensity,
                 FLOAT_T* const result){
 
@@ -1175,7 +1172,7 @@ namespace cudaprob3{
                   useProductionHeightAveraging, 
                   nProductionHeightBins, 
                   productionHeight_prob_list, 
-                  PathLengthShifts,
+                  PathLength_hm_hw,
                   UsePolyDensity,
                   result);
             }
@@ -1184,24 +1181,24 @@ namespace cudaprob3{
             void callCalculateKernelAsync(dim3 grid,
                 dim3 block,
                 cudaStream_t stream,
-                NeutrinoType type,
-                const FLOAT_T* const cosinelist,
-                int n_cosines,
-                const FLOAT_T* const energylist,
-                int n_energies,
-                const FLOAT_T* const radii,
-                const FLOAT_T* const as,
-                const FLOAT_T* const bs,
-                const FLOAT_T* const cs,
-                const FLOAT_T* const rhos,
-                const FLOAT_T* const yps,
-                const int* const maxlayers,
-                FLOAT_T ProductionHeightinCentimeter,
-                bool useProductionHeightAveraging,
-                int nProductionHeightBins,
-                const FLOAT_T* const productionHeight_prob_list,
-                const FLOAT_T* const PathLengthShifts,
-                bool UsePolyDensity,
+                const NeutrinoType type,
+                const FLOAT_T* __restrict__ cosinelist,
+                const int n_cosines,
+                const FLOAT_T* __restrict__ energylist,
+                const int n_energies,
+                const FLOAT_T* __restrict__ radii,
+                const FLOAT_T* __restrict__ as,
+                const FLOAT_T* __restrict__ bs,
+                const FLOAT_T* __restrict__ cs,
+                const FLOAT_T* __restrict__ rhos,
+                const FLOAT_T* __restrict__ yps,
+                const int* __restrict__ maxlayers,
+                const FLOAT_T ProductionHeightinCentimeter,
+                const bool useProductionHeightAveraging,
+                const int nProductionHeightBins,
+                const FLOAT_T* __restrict__ productionHeight_prob_list,
+                const FLOAT_T* __restrict__ PathLength_hm_hw,
+                const bool UsePolyDensity,
                 FLOAT_T* const result){
 
               prepare_getMfast<FLOAT_T>(type);
@@ -1221,7 +1218,7 @@ namespace cudaprob3{
                   useProductionHeightAveraging, 
                   nProductionHeightBins, 
                   productionHeight_prob_list, 
-                  PathLengthShifts,
+                  PathLength_hm_hw,
                   UsePolyDensity,
                   result);
               CUERR;
