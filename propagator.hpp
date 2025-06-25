@@ -612,6 +612,31 @@ namespace cudaprob3{
           productionHeightList_bins[i] = list_bins[i];
         }
 
+
+        productionHeightList_hm_hw.resize(n_cosines * nProductionHeightBins * 2);
+        for(int index_cosine = 0; index_cosine < n_cosines; index_cosine += 1) {
+          const FLOAT_T cosine_zenith = cosineList[index_cosine];
+          const FLOAT_T PathLength = sqrt((Constants<FLOAT_T>::REarthcm() + ProductionHeightinCentimeter )*(Constants<FLOAT_T>::REarthcm() + ProductionHeightinCentimeter)
+          - (Constants<FLOAT_T>::REarthcm()*Constants<FLOAT_T>::REarthcm())*( 1 - cosine_zenith*cosine_zenith)) - Constants<FLOAT_T>::REarthcm()*cosine_zenith;
+
+          std::vector<FLOAT_T> rawPathLengths(nProductionHeightBins + 1);
+          for (int iProductionHeight=0;iProductionHeight<(nProductionHeightBins+1);iProductionHeight++) {
+            FLOAT_T iVal_ProdHeightInCentimeter = Constants<FLOAT_T>::km2cm() * productionHeightList_bins[iProductionHeight];
+            FLOAT_T iVal_PathLength = (sqrt((Constants<FLOAT_T>::REarthcm() + iVal_ProdHeightInCentimeter )*(Constants<FLOAT_T>::REarthcm() + iVal_ProdHeightInCentimeter)
+            - Constants<FLOAT_T>::REarthcm2()*( 1 - cosine_zenith*cosine_zenith)) - Constants<FLOAT_T>::REarthcm()*cosine_zenith);
+
+            rawPathLengths[iProductionHeight] = iVal_PathLength - PathLength;
+          }
+
+          // Compute hm and hw, store interleaved in productionHeightList_hm_hw
+          for (int iProductionHeight = 0; iProductionHeight < nProductionHeightBins; iProductionHeight++) {
+            const FLOAT_T h0 = rawPathLengths[iProductionHeight];
+            const FLOAT_T h1 = rawPathLengths[iProductionHeight + 1];
+
+            productionHeightList_hm_hw[(index_cosine * nProductionHeightBins + iProductionHeight) * 2 + 0] = (h0 + h1) * 0.5;  // hm
+            productionHeightList_hm_hw[(index_cosine * nProductionHeightBins + iProductionHeight) * 2 + 1] = (h1 - h0);        // hw
+          }
+        }
         isSetProductionHeightArray = true;
       }
 
@@ -668,6 +693,10 @@ namespace cudaprob3{
 
       std::vector<FLOAT_T> productionHeightList_prob;
       std::vector<FLOAT_T> productionHeightList_bins;
+
+      /// @brief Midpoint (hm) and half-width (hw) of each production height bin for each cosine.
+      /// Stored as a flattened array: [cosine][bin0_hm, bin0_hw, bin1_hm, bin1_hw, ...]
+      std::vector<FLOAT_T> productionHeightList_hm_hw;
 
       std::vector<FLOAT_T> radii;
       std::vector<FLOAT_T> rhos;

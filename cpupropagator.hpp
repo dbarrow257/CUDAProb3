@@ -109,7 +109,7 @@ namespace cudaprob3{
                 this->useProductionHeightAveraging,
                 this->nProductionHeightBins,
                 this->productionHeightList_prob.data(), 
-                this->productionHeightList_bins.data(), 
+                this->productionHeightList_hm_hw.data(),
                 this->UsePolyDensity, // Are we using constant density or polynomial?
                 resultList.data());
         }
