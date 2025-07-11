@@ -458,8 +458,13 @@ namespace cudaprob3{
      ***********************************************************************/
     template<typename FLOAT_T>
       HOSTDEVICEQUALIFIER
-      void getC(FLOAT_T E, FLOAT_T rho, FLOAT_T dmMatVac[][3], FLOAT_T dmMatMat[][3],
-          cudaprob3::NeutrinoType type, FLOAT_T phase_offset, math::ComplexNumber<FLOAT_T> C[3][3][3]) {
+      void getC(const FLOAT_T E,
+                const FLOAT_T rho,
+                const FLOAT_T dmMatVac[3][3],
+                const FLOAT_T dmMatMat[3][3],
+                const cudaprob3::NeutrinoType type,
+                const FLOAT_T phase_offset,
+                math::ComplexNumber<FLOAT_T> C[3][3][3]) {
 
         const int nExp = 3;
         const int nNuFlav = 3;

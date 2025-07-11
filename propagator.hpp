@@ -613,7 +613,7 @@ namespace cudaprob3{
         }
 
 
-        productionHeightList_hm_hw.resize(n_cosines * nProductionHeightBins * 2);
+        productionHeightList_hm_hw.resize(static_cast<size_t>(n_cosines) * nProductionHeightBins * 2);
         for(int index_cosine = 0; index_cosine < n_cosines; index_cosine += 1) {
           const FLOAT_T cosine_zenith = cosineList[index_cosine];
           const FLOAT_T PathLength = sqrt((Constants<FLOAT_T>::REarthcm() + ProductionHeightinCentimeter )*(Constants<FLOAT_T>::REarthcm() + ProductionHeightinCentimeter)

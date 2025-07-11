@@ -138,9 +138,11 @@ namespace cudaprob3{
         void getProbabilityArr(FLOAT_T* probArr, ProbType t) override{
 
           std::uint64_t iter = 0;
-          for (std::uint64_t index_energy=0;index_energy<this->n_energies;index_energy++) {
-            for (std::uint64_t index_cosine=0;index_cosine<this->n_cosines;index_cosine++) {
-              std::uint64_t index = std::uint64_t(index_cosine) * std::uint64_t(this->n_energies) * std::uint64_t(9) + std::uint64_t(index_energy) * std::uint64_t(9);
+          const std::uint64_t stride = std::uint64_t(this->n_energies) * std::uint64_t(9);
+          for (std::uint64_t index_energy=0;index_energy<this->n_energies;++index_energy) {
+            const std::uint64_t base_energy_offset = std::uint64_t(index_energy) * std::uint64_t(9);
+            for (std::uint64_t index_cosine=0;index_cosine<this->n_cosines;++index_cosine) {
+              std::uint64_t index = std::uint64_t(index_cosine) * stride + base_energy_offset;
               probArr[iter] = resultList[index + int(t)];
               iter += 1;
             }
