@@ -21,32 +21,10 @@ along with CUDAProb3++.  If not, see <http://www.gnu.org/licenses/>.
 #include "hpc_helpers.cuh"
 
 namespace cudaprob3{
+    static FLOAT_T EarthRadius_h = 6371.0;
 
-    // KS This terrible piece of pragmas is to supress very annoying warnings when compiling code
-    #if defined(__CUDACC__)
-    #pragma diag_push
-    #pragma diag_suppress=1835
-    #endif
-
-    #if defined(__clang__)
-    #pragma clang diagnostic push
-    #pragma clang diagnostic ignored "-Wattributes"
-    #elif defined(__GNUC__)
-    #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Wattributes"
-    #endif
-
-    HOSTDEVICEQUALIFIER
-    FLOAT_T EarthRadius = 6371.0;
-
-    #if defined(__clang__)
-    #pragma clang diagnostic pop
-    #elif defined(__GNUC__)
-    #pragma GCC diagnostic pop
-    #endif
-
-    #if defined(__CUDACC__)
-    #pragma diag_pop
+    #ifdef __CUDACC__
+    __device__ __constant__ FLOAT_T EarthRadius_d = 6371.0;
     #endif
 
     template<typename FLOAT_T>
@@ -57,17 +35,29 @@ namespace cudaprob3{
         HOSTDEVICEQUALIFIER
         static constexpr FLOAT_T km2cm(){ return 1.0e5; }
 
-        HOSTDEVICEQUALIFIER
-        static void SetEarthRadius(FLOAT_T EarthRadius_){ EarthRadius = EarthRadius_; }
+        static void SetEarthRadius(FLOAT_T EarthRadius_)
+        {
+            EarthRadius_h = EarthRadius_;
+            #ifdef __CUDACC__
+            printf("copy blarb :(");
+            cudaMemcpyToSymbol(EarthRadius_d, &EarthRadius_h, sizeof(EarthRadius_h)); CUERR;
+            #endif
+        }
 
         HOSTDEVICEQUALIFIER
-        static constexpr FLOAT_T REarth(){ return EarthRadius; }
+        static FLOAT_T REarth(){
+            #ifdef __CUDA_ARCH__
+            return EarthRadius_d;
+            #else
+            return EarthRadius_h;
+            #endif
+        }
 
         HOSTDEVICEQUALIFIER
-        static constexpr FLOAT_T REarthcm(){ return REarth() * km2cm(); }
+        static FLOAT_T REarthcm(){ return REarth() * km2cm(); }
 
         HOSTDEVICEQUALIFIER
-        static constexpr FLOAT_T REarthcm2(){ return REarthcm() * REarthcm(); }
+        static FLOAT_T REarthcm2(){ return REarthcm() * REarthcm(); }
 
         HOSTDEVICEQUALIFIER
         static constexpr FLOAT_T TwoPiOverThree() { return 2.0 * M_PI / 3.0; }
@@ -82,9 +72,8 @@ namespace cudaprob3{
         static constexpr int MaxNLayers(){ return 11; }
       
         HOSTDEVICEQUALIFIER
-	static constexpr FLOAT_T Epsilon(){ return 1e-6; }
+        static constexpr FLOAT_T Epsilon(){ return 1e-6; }
     };
-
 }
 
 
