@@ -39,7 +39,6 @@ namespace cudaprob3{
         {
             EarthRadius_h = EarthRadius_;
             #ifdef __CUDACC__
-            printf("copy blarb :(");
             cudaMemcpyToSymbol(EarthRadius_d, &EarthRadius_h, sizeof(EarthRadius_h)); CUERR;
             #endif
         }
