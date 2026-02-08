@@ -705,7 +705,7 @@ namespace cudaprob3{
         if (Rmin2 == 0) {
           // Use the usual rho(R) = a R^2 + b R + c, and integrate it
           FLOAT_T posterm = A_COEFF[i]*pow(radius[i], 3)/3. + B_COEFF[i]*radius[i]*radius[i]/2. + C_COEFF[i]*radius[i];
-          FLOAT_T negterm = A_COEFF[i]*pow(radius[i+1], 3)/3. + B_COEFF[i]*radius*radius/2. + C_COEFF[i]*radius[i+1];
+          FLOAT_T negterm = A_COEFF[i]*pow(radius[i+1], 3)/3. + B_COEFF[i]*radius[i+1]*radius[i+1]/2. + C_COEFF[i]*radius[i+1];
           FLOAT_T density = posterm - negterm;
           // For the average
           density /= (radius[i]-radius[i+1]);
