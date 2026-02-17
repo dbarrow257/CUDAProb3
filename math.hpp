@@ -45,35 +45,37 @@ namespace cudaprob3{
         }
 
         template<typename FLOAT_T>
-	HOSTDEVICEQUALIFIER
-	FLOAT_T defined_sinc(FLOAT_T A) {
-	  if (abs(A) >= Constants<FLOAT_T>::Epsilon()) {
-	    return sin(A)/A;
-	  } else {
-	    return FLOAT_T(1) - A*A/6. + A*A*A*A/120.;
-	  }
-	}
+        HOSTDEVICEQUALIFIER
+        FLOAT_T defined_sinc(FLOAT_T A) {
+            if (abs(A) >= Constants<FLOAT_T>::Epsilon()) {
+                return sin(A)/A;
+            } else {
+                const FLOAT_T A2 = A*A;
+                return FLOAT_T(1) - A2/6. + A2*A2/120.;
+            }
+        }
       
         template<typename FLOAT_T>
-	HOSTDEVICEQUALIFIER
-	void multiply_phase_matrix(FLOAT_T Phase, ComplexNumber<FLOAT_T> A[3][3], ComplexNumber<FLOAT_T> B[3][3]) {
-	  
-#ifdef __CUDACC__
-	  FLOAT_T c,s;
-	  sincos(Phase, &s, &c);
-#else
-	  const FLOAT_T s = sin(Phase);
-	  const FLOAT_T c = cos(Phase);
-#endif
+        HOSTDEVICEQUALIFIER
+        void multiply_phase_matrix(const FLOAT_T Phase, const ComplexNumber<FLOAT_T> A[3][3], ComplexNumber<FLOAT_T> B[3][3]) {
 
-	  for (int i=0; i<3; i++) {
-	    for (int j=0; j<3; j++) {
-	      B[i][j].re += c * A[i][j].re - s * A[i][j].im;
-	      B[i][j].im += c * A[i][j].im + s * A[i][j].re;
-	    }
-	  }
-	}
+        #ifdef __CUDACC__
+            FLOAT_T c,s;
+            sincos(Phase, &s, &c);
+        #else
+            const FLOAT_T s = sin(Phase);
+            const FLOAT_T c = cos(Phase);
+        #endif
+            for (int i=0; i<3; i++) {
+                for (int j=0; j<3; j++) {
+                    const FLOAT_T ar = A[i][j].re;
+                    const FLOAT_T ai = A[i][j].im;
 
+                    B[i][j].re += c * ar - s * ai;
+                    B[i][j].im += c * ai + s * ar;
+                }
+            }
+        }
 
         /*
         *   multiply complex 3x3 matrix
@@ -81,20 +83,53 @@ namespace cudaprob3{
         */
         template<typename FLOAT_T>
         HOSTDEVICEQUALIFIER
-        void multiply_complex_matrix(ComplexNumber<FLOAT_T> A[3][3], ComplexNumber<FLOAT_T> B[3][3], ComplexNumber<FLOAT_T> C[3][3]){
+        void multiply_complex_matrix(const ComplexNumber<FLOAT_T> A[3][3], const ComplexNumber<FLOAT_T> B[3][3], ComplexNumber<FLOAT_T> C[3][3]){
 
             for (int i=0; i<3; i++) {
 
                 for (int j=0; j<3; j++) {
-
+                    FLOAT_T cr = 0.;
+                    FLOAT_T ci = 0.;
                     for (int k=0; k<3; k++) {
-                        C[i][j].re += A[i][k].re*B[k][j].re-A[i][k].im*B[k][j].im;
-                        C[i][j].im += A[i][k].im*B[k][j].re+A[i][k].re*B[k][j].im;
+                        const FLOAT_T ar = A[i][k].re;
+                        const FLOAT_T ai = A[i][k].im;
+                        const FLOAT_T br = B[k][j].re;
+                        const FLOAT_T bi = B[k][j].im;
+
+                        cr += ar*br - ai*bi;
+                        ci += ai*br + ar*bi;
                     }
+                    C[i][j].re += cr;
+                    C[i][j].im += ci;
                 }
             }
         }
 
+        /*
+         *   multiply complex 3x3 matrix
+         *        C = A X B
+         */
+        template<typename FLOAT_T>
+        HOSTDEVICEQUALIFIER
+        void multiply_complex_matrix_cleared(const ComplexNumber<FLOAT_T> A[3][3], const ComplexNumber<FLOAT_T> B[3][3], ComplexNumber<FLOAT_T> C[3][3]){
+            for (int i=0; i<3; ++i) {
+                for (int j=0; j<3; ++j) {
+                    FLOAT_T cr = 0.;
+                    FLOAT_T ci = 0.;
+                    for (int k=0; k<3; ++k) {
+                        const FLOAT_T ar = A[i][k].re;
+                        const FLOAT_T ai = A[i][k].im;
+                        const FLOAT_T br = B[k][j].re;
+                        const FLOAT_T bi = B[k][j].im;
+
+                        cr += ar*br - ai*bi;
+                        ci += ai*br + ar*bi;
+                    }
+                    C[i][j].re = cr;
+                    C[i][j].im = ci;
+                }
+            }
+        }
         /*
         *   multiply complex 3x3 matrix and 3 vector
         *        W = A X V
@@ -119,15 +154,33 @@ namespace cudaprob3{
         */
         template<typename FLOAT_T>
         HOSTDEVICEQUALIFIER
-        void copy_complex_matrix(ComplexNumber<FLOAT_T> A[][3], ComplexNumber<FLOAT_T> B[][3]){
-            //memcpy(B,A,sizeof(ComplexNumber<FLOAT_T>)*9);
+        void copy_complex_matrix(const ComplexNumber<FLOAT_T> A[3][3], ComplexNumber<FLOAT_T> B[3][3]) {
+            B[0][0].re = A[0][0].re;
+            B[0][0].im = A[0][0].im;
 
-            for(int i = 0; i < 3; i++){
-                for(int j = 0; j < 3; j++){
-                    B[i][j].re = A[i][j].re;
-                    B[i][j].im = A[i][j].im;
-                }
-            }
+            B[0][1].re = A[0][1].re;
+            B[0][1].im = A[0][1].im;
+
+            B[0][2].re = A[0][2].re;
+            B[0][2].im = A[0][2].im;
+
+            B[1][0].re = A[1][0].re;
+            B[1][0].im = A[1][0].im;
+
+            B[1][1].re = A[1][1].re;
+            B[1][1].im = A[1][1].im;
+
+            B[1][2].re = A[1][2].re;
+            B[1][2].im = A[1][2].im;
+
+            B[2][0].re = A[2][0].re;
+            B[2][0].im = A[2][0].im;
+
+            B[2][1].re = A[2][1].re;
+            B[2][1].im = A[2][1].im;
+
+            B[2][2].re = A[2][2].re;
+            B[2][2].im = A[2][2].im;
         }
 
         /*
@@ -136,7 +189,7 @@ namespace cudaprob3{
         */
         template<typename FLOAT_T>
         HOSTDEVICEQUALIFIER
-        void clear_complex_matrix(ComplexNumber<FLOAT_T> A[][3]){
+        void clear_complex_matrix(ComplexNumber<FLOAT_T> A[3][3]){
             A[0][0].re = 0;
             A[0][0].im = 0;
             A[0][1].re = 0;

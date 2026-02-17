@@ -203,10 +203,10 @@ namespace cudaprob3{
          * mass the same way as the "matter" masses are computed then to sort
          * the results according to the input vacuum masses
          */
-        FLOAT_T alphaV = DM(0,1) + DM(0,2);
-        FLOAT_T alphaV2 = alphaV*alphaV;
-        FLOAT_T betaV = DM(0,1) * DM(0,2);
-        FLOAT_T gammaV = 0.0;
+        const FLOAT_T alphaV = DM(0,1) + DM(0,2);
+        const FLOAT_T alphaV2 = alphaV*alphaV;
+        const FLOAT_T betaV = DM(0,1) * DM(0,2);
+        const FLOAT_T gammaV = 0.0;
 
         /* Compute the argument of the arc-cosine */
         FLOAT_T tmpV = alphaV2-3.0*betaV;
@@ -322,7 +322,7 @@ namespace cudaprob3{
         mMatU[1] += tmp2;
         mMatU[2] += tmp2;
 
-        /* Sort according to which reproduce the vaccum eigenstates */
+        /* Sort according to which reproduce the vacuum eigenstates */
 
         UNROLLQUALIFIER
           for (int i=0; i<3; i++) {
@@ -344,8 +344,8 @@ namespace cudaprob3{
        */
     template<typename FLOAT_T>
       HOSTDEVICEQUALIFIER
-      void get_product(const FLOAT_T L, const FLOAT_T E, const FLOAT_T rho, const FLOAT_T d_dmMatVac[][3], const FLOAT_T d_dmMatMat[][3],
-          const NeutrinoType type, math::ComplexNumber<FLOAT_T> product[][3][3]){
+      void get_product(const FLOAT_T L, const FLOAT_T E, const FLOAT_T rho, const FLOAT_T d_dmMatVac[3][3], const FLOAT_T d_dmMatMat[3][3],
+          const NeutrinoType type, math::ComplexNumber<FLOAT_T> product[3][3][3]){
 
         math::ComplexNumber<FLOAT_T> twoEHmM[3][3][3];
 
@@ -361,20 +361,28 @@ namespace cudaprob3{
           for (int n=0; n<3; n++) {
             UNROLLQUALIFIER
               for (int m=0; m<3; m++) {
-                twoEHmM[n][m][0].re = -fac*(U(0,n).re*U(0,m).re+U(0,n).im*U(0,m).im);
-                twoEHmM[n][m][0].im = -fac*(U(0,n).re*U(0,m).im-U(0,n).im*U(0,m).re);
-                twoEHmM[n][m][1].re = -fac*(U(0,n).re*U(0,m).re+U(0,n).im*U(0,m).im);
-                twoEHmM[n][m][1].im = -fac*(U(0,n).re*U(0,m).im-U(0,n).im*U(0,m).re);
-                twoEHmM[n][m][2].re = -fac*(U(0,n).re*U(0,m).re+U(0,n).im*U(0,m).im);
-                twoEHmM[n][m][2].im = -fac*(U(0,n).re*U(0,m).im-U(0,n).im*U(0,m).re);
+                const FLOAT_T u0n_re = U(0, n).re;
+                const FLOAT_T u0n_im = U(0, n).im;
+                const FLOAT_T u0m_re = U(0, m).re;
+                const FLOAT_T u0m_im = U(0, m).im;
+
+                const FLOAT_T common_re = -fac * (u0n_re * u0m_re + u0n_im * u0m_im);
+                const FLOAT_T common_im = -fac * (u0n_re * u0m_im - u0n_im * u0m_re);
+
+                twoEHmM[n][m][0].re = common_re;
+                twoEHmM[n][m][0].im = common_im;
+                twoEHmM[n][m][1].re = common_re;
+                twoEHmM[n][m][1].im = common_im;
+                twoEHmM[n][m][2].re = common_re;
+                twoEHmM[n][m][2].im = common_im;
               }
           }
 
         UNROLLQUALIFIER
           for (int j=0; j<3; j++){
-            twoEHmM[0][0][j].re-= d_dmMatVac[j][0];
-            twoEHmM[1][1][j].re-= d_dmMatVac[j][1];
-            twoEHmM[2][2][j].re-= d_dmMatVac[j][2];
+            twoEHmM[0][0][j].re -= d_dmMatVac[j][0];
+            twoEHmM[1][1][j].re -= d_dmMatVac[j][1];
+            twoEHmM[2][2][j].re -= d_dmMatVac[j][2];
           }
 
         /* Calculate the product in eq.(11) of twoEHmM for j!=k */
@@ -391,40 +399,45 @@ namespace cudaprob3{
               }
           }
 
+        // KS: Calculate inverted denominator here as it doesn't depend on loop
+        // also calculate inverse to reduce division while multiplication is usually faster
+        const FLOAT_T inv_denom0 = FLOAT_T(1) / (d_dmMatMat[0][1] * d_dmMatMat[0][2]);
+        const FLOAT_T inv_denom1 = FLOAT_T(1) / (d_dmMatMat[1][2] * d_dmMatMat[1][0]);
+        const FLOAT_T inv_denom2 = FLOAT_T(1) / (d_dmMatMat[2][0] * d_dmMatMat[2][1]);
+
         UNROLLQUALIFIER
           for (int i=0; i<3; i++) {
             UNROLLQUALIFIER
               for (int j=0; j<3; j++) {
+                // We allocate local variables for much faster access patter than product array
+                FLOAT_T re0 = 0, im0 = 0;
+                FLOAT_T re1 = 0, im1 = 0;
+                FLOAT_T re2 = 0, im2 = 0;
+
                 UNROLLQUALIFIER
                   for (int k=0; k<3; k++) {
-                    product[i][j][0].re +=
-                      twoEHmM[i][k][1].re*twoEHmM[k][j][2].re -
-                      twoEHmM[i][k][1].im*twoEHmM[k][j][2].im;
-                    product[i][j][0].im +=
-                      twoEHmM[i][k][1].re*twoEHmM[k][j][2].im +
-                      twoEHmM[i][k][1].im*twoEHmM[k][j][2].re;
+                    re0 += twoEHmM[i][k][1].re*twoEHmM[k][j][2].re -
+                           twoEHmM[i][k][1].im*twoEHmM[k][j][2].im;
+                    im0 += twoEHmM[i][k][1].re*twoEHmM[k][j][2].im +
+                           twoEHmM[i][k][1].im*twoEHmM[k][j][2].re;
 
-                    product[i][j][1].re +=
-                      twoEHmM[i][k][2].re*twoEHmM[k][j][0].re -
-                      twoEHmM[i][k][2].im*twoEHmM[k][j][0].im;
-                    product[i][j][1].im +=
-                      twoEHmM[i][k][2].re*twoEHmM[k][j][0].im +
-                      twoEHmM[i][k][2].im*twoEHmM[k][j][0].re;
+                    re1 += twoEHmM[i][k][2].re*twoEHmM[k][j][0].re -
+                            twoEHmM[i][k][2].im*twoEHmM[k][j][0].im;
+                    im1 += twoEHmM[i][k][2].re*twoEHmM[k][j][0].im +
+                           twoEHmM[i][k][2].im*twoEHmM[k][j][0].re;
 
-                    product[i][j][2].re +=
-                      twoEHmM[i][k][0].re*twoEHmM[k][j][1].re -
-                      twoEHmM[i][k][0].im*twoEHmM[k][j][1].im;
-                    product[i][j][2].im +=
-                      twoEHmM[i][k][0].re*twoEHmM[k][j][1].im +
-                      twoEHmM[i][k][0].im*twoEHmM[k][j][1].re;
+                    re2 += twoEHmM[i][k][0].re*twoEHmM[k][j][1].re -
+                           twoEHmM[i][k][0].im*twoEHmM[k][j][1].im;
+                    im2 += twoEHmM[i][k][0].re*twoEHmM[k][j][1].im +
+                           twoEHmM[i][k][0].im*twoEHmM[k][j][1].re;
                   }
 
-                product[i][j][0].re /= (d_dmMatMat[0][1]*d_dmMatMat[0][2]);
-                product[i][j][0].im /= (d_dmMatMat[0][1]*d_dmMatMat[0][2]);
-                product[i][j][1].re /= (d_dmMatMat[1][2]*d_dmMatMat[1][0]);
-                product[i][j][1].im /= (d_dmMatMat[1][2]*d_dmMatMat[1][0]);
-                product[i][j][2].re /= (d_dmMatMat[2][0]*d_dmMatMat[2][1]);
-                product[i][j][2].im /= (d_dmMatMat[2][0]*d_dmMatMat[2][1]);
+                  product[i][j][0].re = re0 * inv_denom0;
+                  product[i][j][0].im = im0 * inv_denom0;
+                  product[i][j][1].re = re1 * inv_denom1;
+                  product[i][j][1].im = im1 * inv_denom1;
+                  product[i][j][2].re = re2 * inv_denom2;
+                  product[i][j][2].im = im2 * inv_denom2;
               }
           }
       }
@@ -438,13 +451,13 @@ namespace cudaprob3{
      ***********************************************************************/
     template<typename FLOAT_T>
       HOSTDEVICEQUALIFIER
-      void getArg(const FLOAT_T L, const FLOAT_T E, const FLOAT_T dmMatVac[][3], const FLOAT_T phase_offset, FLOAT_T arg[3]) {
+      void getArg(const FLOAT_T L, const FLOAT_T E, const FLOAT_T dmMatVac[3][3], const FLOAT_T phase_offset, FLOAT_T arg[3]) {
 
         /* (1/2)*(1/(h_bar*c)) in units of GeV/(eV^2-km) */
         const FLOAT_T LoEfac = 2.534;
-
-        for (int k=0; k<3; k++) {
-          arg[k] = -LoEfac*dmMatVac[k][0]*L/E;
+        const FLOAT_T L_over_E = L/E;
+        for (int k=0; k < 3; k++) {
+          arg[k] = -LoEfac*dmMatVac[k][0]*L_over_E;
           if ( k==2 ) arg[k] += phase_offset ;
         }
       }
@@ -647,7 +660,7 @@ namespace cudaprob3{
 
     /*
        Find density in layer using the cubic polynomials
-       */
+    */
     template<typename FLOAT_T>
       HOSTDEVICEQUALIFIER
       FLOAT_T getDensityOfLayerPoly(
@@ -682,17 +695,17 @@ namespace cudaprob3{
         // But now we have an exciting variable density
 
         // Calculate the nearest approach to the center (km^2)
-        const FLOAT_T Rmin2 = pow(Constants<FLOAT_T>::REarth(), 2)*(1-pow(costheta, 2));
+        const FLOAT_T Rmin2 = Constants<FLOAT_T>::REarth() * Constants<FLOAT_T>::REarth() * (1-costheta*costheta);
         // And the max radius is simply the radius of this shell (km^2)
-        const FLOAT_T Rmax2 = pow(radius[i], 2);
+        const FLOAT_T Rmax2 = radius[i]*radius[i];
         // distance in km
         const FLOAT_T dist = sqrt(Rmax2 - Rmin2);
 
         // If Rmin2 is zero we're coming right along the radius, so don't need any of the below transforms
         if (Rmin2 == 0) {
           // Use the usual rho(R) = a R^2 + b R + c, and integrate it
-          FLOAT_T posterm = A_COEFF[i]*pow(radius[i], 3)/3. + B_COEFF[i]*pow(radius[i], 2)/2. + C_COEFF[i]*radius[i];
-          FLOAT_T negterm = A_COEFF[i]*pow(radius[i+1], 3)/3. + B_COEFF[i]*pow(radius[i+1], 2)/2. + C_COEFF[i]*radius[i+1];
+          FLOAT_T posterm = A_COEFF[i]*pow(radius[i], 3)/3. + B_COEFF[i]*radius[i]*radius[i]/2. + C_COEFF[i]*radius[i];
+          FLOAT_T negterm = A_COEFF[i]*pow(radius[i+1], 3)/3. + B_COEFF[i]*radius[i+1]*radius[i+1]/2. + C_COEFF[i]*radius[i+1];
           FLOAT_T density = posterm - negterm;
           // For the average
           density /= (radius[i]-radius[i+1]);
@@ -713,8 +726,8 @@ namespace cudaprob3{
         // Parameterise density as density = a*r^2 + b*r + c
 
         // Start with the r^2 term:
-        FLOAT_T square_term_p = a*pow(t2,3)/3. + b*pow(t2,2)/2. + c*t2;
-        FLOAT_T square_term_m = a*pow(t1,3)/3. + b*pow(t1,2)/2. + c*t1;
+        FLOAT_T square_term_p = a*t2*t2*t2/3. + b*t2*t2/2. + c*t2;
+        FLOAT_T square_term_m = a*t1*t1*t1/3. + b*t1*t1/2. + c*t1;
         // Their difference (integral between t2 and t1)
         FLOAT_T square_term = square_term_p-square_term_m;
 
@@ -893,7 +906,7 @@ namespace cudaprob3{
                     - Constants<FLOAT_T>::REarthcm2()*( 1 - cosine_zenith*cosine_zenith)) - Constants<FLOAT_T>::REarthcm()*cosine_zenith;
 
                 //============================================================================================================
-                //DB Loop over layers		    
+                //DB Loop over layers
 
                 // loop from vacuum layer to innermost crossed layer
                 for (int iLayer=0;iLayer<=MaxLayer;iLayer++) {
@@ -909,7 +922,7 @@ namespace cudaprob3{
                   // If we use constant density
                   if (!UsePolyDensity) { 
                     density = getDensityOfLayer(rhos, yps, iLayer, MaxLayer);
-                  // If we use polynomial average density per trjectory
+                  // If we use polynomial average density per trajectory
                   } else {
                     density = getDensityOfLayerPoly(as, bs, cs, cosine_zenith, radii, yps, iLayer, MaxLayer, dist);
                   }
@@ -963,23 +976,19 @@ namespace cudaprob3{
                     }
 
                   } else if (iLayer < MaxLayer) { // not the innermost layer, can reuse current TransitionMatrix
-                    clear_complex_matrix( TransitionTemp );
-                    multiply_complex_matrix( TransitionMatrix, finalTransitionMatrix, TransitionTemp );
+                    multiply_complex_matrix_cleared( TransitionMatrix, finalTransitionMatrix, TransitionTemp );
                     copy_complex_matrix( TransitionTemp, finalTransitionMatrix );
 
-                    clear_complex_matrix( TransitionTemp );
-                    multiply_complex_matrix( TransitionMatrixCoreToMantle, TransitionMatrix, TransitionTemp );
+                    multiply_complex_matrix_cleared( TransitionMatrixCoreToMantle, TransitionMatrix, TransitionTemp );
                     copy_complex_matrix( TransitionTemp, TransitionMatrixCoreToMantle );
                   } else { // innermost layer
-                    clear_complex_matrix( TransitionTemp );
-                    multiply_complex_matrix( TransitionMatrix, finalTransitionMatrix, TransitionTemp );
+                    multiply_complex_matrix_cleared( TransitionMatrix, finalTransitionMatrix, TransitionTemp );
                     copy_complex_matrix( TransitionTemp, finalTransitionMatrix );
                   }
                 }
 
                 // calculate final transition matrix
-                clear_complex_matrix( TransitionTemp );
-                multiply_complex_matrix( TransitionMatrixCoreToMantle, finalTransitionMatrix, TransitionTemp );
+                multiply_complex_matrix_cleared( TransitionMatrixCoreToMantle, finalTransitionMatrix, TransitionTemp );
                 copy_complex_matrix( TransitionTemp, finalTransitionMatrix );
 
                 //============================================================================================================
@@ -1026,8 +1035,8 @@ namespace cudaprob3{
                               //sinc(0.5 * darg_distance * hw) * exp(factor).re = sinc(0.5 * darg_distance * hw) * sin(darg_distance * hm)
 
                               math::ComplexNumber<FLOAT_T> sinc_exp_factor; 
-                              FLOAT_T Sinc_Arg = 0.5 * darg_distance * hw;
-                              FLOAT_T SincVal  = cudaprob3::math::defined_sinc(Sinc_Arg);
+                              const FLOAT_T Sinc_Arg = 0.5 * darg_distance * hw;
+                              const FLOAT_T SincVal  = cudaprob3::math::defined_sinc(Sinc_Arg);
 
                               sinc_exp_factor.re = SincVal * cos(darg_hm);
                               sinc_exp_factor.im = SincVal * sin(darg_hm);
@@ -1107,10 +1116,21 @@ namespace cudaprob3{
                           for (int iNuFlav=0;iNuFlav<nNuFlav;iNuFlav++) { //Flavour after osc
                             UNROLLQUALIFIER
                                 for (int jNuFlav=0;jNuFlav<nNuFlav;jNuFlav++) { //Flavour before osc
-                                Prob[iNuFlav][jNuFlav] +=  2. * Product[jExp][iNuFlav][jNuFlav].re * Product[iExp][iNuFlav][jNuFlav].re * totalLenShiftFactor[iExp][jExp][jNuFlav].re
-                                  +  2. * Product[jExp][iNuFlav][jNuFlav].im * Product[iExp][iNuFlav][jNuFlav].im * totalLenShiftFactor[iExp][jExp][jNuFlav].re
-                                  +  2. * Product[jExp][iNuFlav][jNuFlav].im * Product[iExp][iNuFlav][jNuFlav].re * totalLenShiftFactor[iExp][jExp][jNuFlav].im
-                                  -  2. * Product[jExp][iNuFlav][jNuFlav].re * Product[iExp][iNuFlav][jNuFlav].im * totalLenShiftFactor[iExp][jExp][jNuFlav].im;
+                                  const auto& Pi = Product[iExp][iNuFlav][jNuFlav];
+                                  const auto& Pj = Product[jExp][iNuFlav][jNuFlav];
+                                  const auto& T  = totalLenShiftFactor[iExp][jExp][jNuFlav];
+
+                                  const auto pir = Pi.re;
+                                  const auto pii = Pi.im;
+                                  const auto pjr = Pj.re;
+                                  const auto pji = Pj.im;
+                                  const auto tr  = T.re;
+                                  const auto ti  = T.im;
+
+                                  const FLOAT_T dot   = pjr*pir + pji*pii;
+                                  const FLOAT_T cross = pji*pir - pjr*pii;
+
+                                  Prob[iNuFlav][jNuFlav] += 2.0 * (dot*tr + cross*ti);
                               }
                           }
                       }
