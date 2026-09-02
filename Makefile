@@ -9,6 +9,14 @@ ARCH=	-gencode arch=compute_30,code=sm_30 \
 	-gencode arch=compute_35,code=sm_35 \
 	-gencode arch=compute_35,code=compute_35
 else
+ifeq ($(shell expr $(CUDAVER) \>= 13), 1)
+ARCH=	-gencode arch=compute_75,code=sm_75 \
+	-gencode arch=compute_80,code=sm_80 \
+	-gencode arch=compute_86,code=sm_86 \
+	-gencode arch=compute_89,code=sm_89 \
+	-gencode arch=compute_90,code=sm_90 \
+	-gencode arch=compute_90,code=compute_90
+else
 ifeq ($(shell expr $(CUDAVER) \>= 11), 1)
 ARCH= 	-gencode arch=compute_52,code=sm_52 \
 	-gencode arch=compute_60,code=sm_60 \
@@ -23,6 +31,7 @@ ARCH=	-gencode arch=compute_30,code=sm_30 \
 	-gencode arch=compute_32,code=sm_32 \
 	-gencode arch=compute_35,code=sm_35 \
 	-gencode arch=compute_35,code=compute_35
+endif
 endif
 endif
 
