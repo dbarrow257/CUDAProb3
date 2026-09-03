@@ -103,6 +103,8 @@ along with CUDAProb3++.  If not, see <http://www.gnu.org/licenses/>.
 #define ORDER(i) cudaprob3::physics::mass_order[i]
 #endif
 
+#define AXFAC_HOST(a,b,c,d,e) ((FLOAT_T*)cudaprob3::physics::A_X_factor)[a * 3 * 3 * 3 * 4 + b * 3 * 3 * 4 + c * 3 * 4 + d * 4 + e]
+
 
 namespace cudaprob3{
 
@@ -136,10 +138,10 @@ namespace cudaprob3{
           for (int m=0; m<3; m++) {
             for (int i=0; i<3; i++) {
               for (int j=0; j<3; j++) {
-                AXFAC(n,m,i,j,0) = U[n * 3 + i].re * U[m * 3 + j].re + U[n * 3 + i].im * U[m * 3 + j].im;
-                AXFAC(n,m,i,j,1) = U[n * 3 + i].re * U[m * 3 + j].im - U[n * 3 + i].im * U[m * 3 + j].re;
-                AXFAC(n,m,i,j,2) = U[n * 3 + i].im * U[m * 3 + j].im + U[n * 3 + i].re * U[m * 3 + j].re;
-                AXFAC(n,m,i,j,3) = U[n * 3 + i].im * U[m * 3 + j].re - U[n * 3 + i].re * U[m * 3 + j].im;
+                AXFAC_HOST(n,m,i,j,0) = U[n * 3 + i].re * U[m * 3 + j].re + U[n * 3 + i].im * U[m * 3 + j].im;
+                AXFAC_HOST(n,m,i,j,1) = U[n * 3 + i].re * U[m * 3 + j].im - U[n * 3 + i].im * U[m * 3 + j].re;
+                AXFAC_HOST(n,m,i,j,2) = U[n * 3 + i].im * U[m * 3 + j].im + U[n * 3 + i].re * U[m * 3 + j].re;
+                AXFAC_HOST(n,m,i,j,3) = U[n * 3 + i].im * U[m * 3 + j].re - U[n * 3 + i].re * U[m * 3 + j].im;
               }
             }
           }
@@ -163,10 +165,10 @@ namespace cudaprob3{
           for (int m=0; m<3; m++) {
             for (int i=0; i<3; i++) {
               for (int j=0; j<3; j++) {
-                AXFAC(n,m,i,j,0) = U[n * 3 + i].re * U[m * 3 + j].re + U[n * 3 + i].im * U[m * 3 + j].im;
-                AXFAC(n,m,i,j,1) = U[n * 3 + i].re * U[m * 3 + j].im - U[n * 3 + i].im * U[m * 3 + j].re;
-                AXFAC(n,m,i,j,2) = U[n * 3 + i].im * U[m * 3 + j].im + U[n * 3 + i].re * U[m * 3 + j].re;
-                AXFAC(n,m,i,j,3) = U[n * 3 + i].im * U[m * 3 + j].re - U[n * 3 + i].re * U[m * 3 + j].im;
+                AXFAC_HOST(n,m,i,j,0) = U[n * 3 + i].re * U[m * 3 + j].re + U[n * 3 + i].im * U[m * 3 + j].im;
+                AXFAC_HOST(n,m,i,j,1) = U[n * 3 + i].re * U[m * 3 + j].im - U[n * 3 + i].im * U[m * 3 + j].re;
+                AXFAC_HOST(n,m,i,j,2) = U[n * 3 + i].im * U[m * 3 + j].im + U[n * 3 + i].re * U[m * 3 + j].re;
+                AXFAC_HOST(n,m,i,j,3) = U[n * 3 + i].im * U[m * 3 + j].re - U[n * 3 + i].re * U[m * 3 + j].im;
               }
             }
           }
