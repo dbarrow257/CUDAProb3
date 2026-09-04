@@ -20,11 +20,13 @@ along with CUDAProb3++.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "hpc_helpers.cuh"
 
+#include <cmath>
+
 namespace cudaprob3{
-    static FLOAT_T EarthRadius_h = 6371.0;
+    static double EarthRadius_h = 6371.0;
 
     #ifdef __CUDACC__
-    __device__ __constant__ FLOAT_T EarthRadius_d = 6371.0;
+    __device__ __constant__ double EarthRadius_d = 6371.0;
     #endif
 
     template<typename FLOAT_T>
@@ -37,7 +39,7 @@ namespace cudaprob3{
 
         static void SetEarthRadius(FLOAT_T EarthRadius_)
         {
-            EarthRadius_h = EarthRadius_;
+            EarthRadius_h = double(EarthRadius_);
             #ifdef __CUDACC__
             cudaMemcpyToSymbol(EarthRadius_d, &EarthRadius_h, sizeof(EarthRadius_h)); CUERR;
             #endif
@@ -46,9 +48,9 @@ namespace cudaprob3{
         HOSTDEVICEQUALIFIER
         static FLOAT_T REarth(){
             #ifdef __CUDA_ARCH__
-            return EarthRadius_d;
+            return FLOAT_T(EarthRadius_d);
             #else
-            return EarthRadius_h;
+            return FLOAT_T(EarthRadius_h);
             #endif
         }
 
